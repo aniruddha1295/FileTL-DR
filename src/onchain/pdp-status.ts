@@ -1,14 +1,28 @@
 import type { Chain, Client, Transport } from 'viem';
-// Real Phase 3 dependency, verified against installed package source at
+// Real Phase 3 dependencies, verified against installed package source at
 // node_modules/@filoz/synapse-core/dist/src/pdp-verifier/get-next-challenge-epoch.d.ts (v0.8.1):
 //   namespace getNextChallengeEpoch {
 //     type OptionsType = { dataSetId: bigint; contractAddress?: Address };
 //     type OutputType = bigint | null;
 //   }
 //   function getNextChallengeEpoch(client: Client<Transport, Chain>, options: getNextChallengeEpoch.OptionsType): Promise<getNextChallengeEpoch.OutputType>;
+//
+// and node_modules/@filoz/synapse-core/dist/src/pdp-verifier/index.d.ts (v0.8.1):
+//   namespace getContract {
+//     type OptionsType = { client: Client<Transport, Chain>; address?: Address };
+//     type OutputType = GetContractReturnType<typeof pdpAbi, Client<Transport, Chain>>;
+//   }
+//   function getContract(options: getContract.OptionsType): getContract.OutputType;
+//
+// `getContract`'s returned viem contract instance exposes `.read.getDataSetLastProvenEpoch([dataSetId])`,
+// confirmed against the generated PDP ABI at
+// node_modules/@filoz/synapse-core/dist/src/pdp-verifier/get-next-challenge-epoch.d.ts's embedded
+// `pdpVerifierAbi` (the same ABI `getContract` wires up via `chain.contracts.pdp.abi`), which declares:
+//   { type: 'function', name: 'getDataSetLastProvenEpoch', inputs: [{ name: 'setId', type: 'uint256' }],
+//     outputs: [{ type: 'uint256' }], stateMutability: 'view' }
 // The `/pdp-verifier` subpath export is declared in @filoz/synapse-core's package.json
 // `exports` map (-> dist/src/pdp-verifier/index.d.ts), so this import resolves for real.
-import type { getNextChallengeEpoch } from '@filoz/synapse-core/pdp-verifier';
+import { getContract, getNextChallengeEpoch } from '@filoz/synapse-core/pdp-verifier';
 
 /**
  * Number of epochs of grace given to a storage provider after
@@ -128,23 +142,73 @@ export class MockPDPStatusChecker implements PDPStatusChecker {
   }
 }
 
-/**
- * Real, on-chain-backed implementation. Phase 3 will fill in `checkStatus`
- * using `getNextChallengeEpoch` (and likely `getDataSetLastProvenEpoch` from
- * the PDPVerifier ABI) against `this.client`. The constructor signature
- * matches `getNextChallengeEpoch`'s `client` parameter exactly so wiring in
- * the real call is a small diff, not a rewrite.
- */
-export class RealPDPStatusChecker implements PDPStatusChecker {
-  constructor(private readonly client: Client<Transport, Chain>) {}
-
-  async checkStatus(_dataSetId: bigint, _currentEpoch: bigint): Promise<PDPStatusResult> {
-    throw new Error('RealPDPStatusChecker not implemented — Phase 3');
-  }
+/** Injectable on-chain read functions, so tests can stub them without mocking viem itself. */
+export interface RealPDPStatusCheckerDeps {
+  getNextChallengeEpoch: typeof getNextChallengeEpoch;
+  getContract: typeof getContract;
 }
 
-// Re-exported purely so the real Phase 3 type dependency is exercised by the
-// type checker (confirms the subpath import resolves) without introducing an
-// unused-import error; Phase 3 will use this type directly when implementing
-// `RealPDPStatusChecker.checkStatus`.
-export type { getNextChallengeEpoch };
+const defaultDeps: RealPDPStatusCheckerDeps = { getNextChallengeEpoch, getContract };
+
+/**
+ * Real, on-chain-backed implementation, backed by two PDPVerifier reads:
+ *
+ * - `getNextChallengeEpoch(client, { dataSetId })` — real wrapper exported by
+ *   `@filoz/synapse-core/pdp-verifier`; already returns `null` when there is
+ *   no pending challenge (including when the data set is not live).
+ * - `getContract({ client }).read.getDataSetLastProvenEpoch([dataSetId])` —
+ *   there is no dedicated wrapper for this read, so we go through the raw
+ *   viem contract instance returned by `getContract` (same helper
+ *   `getNextChallengeEpoch` itself is built on top of) against the
+ *   PDPVerifier ABI's `getDataSetLastProvenEpoch(uint256 setId) -> uint256`
+ *   view function. The contract returns `0n` both for "at epoch zero" and
+ *   for "never proven"; since a live testnet/mainnet data set can never
+ *   actually have its last-proven epoch pinned at genesis (epoch 0 predates
+ *   any real data set), we treat `0n` as the "never proven" sentinel and map
+ *   it to `lastProvenEpoch: null`, matching `deriveStatus`'s existing
+ *   never-proven semantics (see `MockPDPStatusChecker`'s same convention).
+ *
+ * Both reads are wrapped in a single try/catch that rethrows with the
+ * `dataSetId` for context — errors are never swallowed or replaced with a
+ * fabricated status.
+ */
+export class RealPDPStatusChecker implements PDPStatusChecker {
+  private readonly deps: RealPDPStatusCheckerDeps;
+
+  constructor(
+    private readonly client: Client<Transport, Chain>,
+    deps: RealPDPStatusCheckerDeps = defaultDeps,
+  ) {
+    this.deps = deps;
+  }
+
+  async checkStatus(dataSetId: bigint, currentEpoch: bigint): Promise<PDPStatusResult> {
+    let lastProvenEpoch: bigint | null;
+    let nextChallengeEpoch: bigint | null;
+
+    try {
+      // Neither read depends on the other's result — run them concurrently
+      // instead of paying two sequential RPC round-trips.
+      const contract = this.deps.getContract({ client: this.client });
+      const [nextChallenge, rawLastProvenEpoch] = await Promise.all([
+        this.deps.getNextChallengeEpoch(this.client, { dataSetId }),
+        contract.read.getDataSetLastProvenEpoch([dataSetId]),
+      ]);
+      nextChallengeEpoch = nextChallenge;
+      lastProvenEpoch = rawLastProvenEpoch === 0n ? null : rawLastProvenEpoch;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new Error(`PDP status check failed for dataSetId ${dataSetId}: ${reason}`, { cause: error });
+    }
+
+    const status = deriveStatus(currentEpoch, lastProvenEpoch, nextChallengeEpoch);
+
+    return {
+      dataSetId,
+      currentEpoch,
+      lastProvenEpoch,
+      nextChallengeEpoch,
+      status,
+    };
+  }
+}

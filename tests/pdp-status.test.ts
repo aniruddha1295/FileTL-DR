@@ -1,5 +1,42 @@
-import { describe, expect, it } from 'vitest';
-import { CHALLENGE_GRACE_EPOCHS, MockPDPStatusChecker } from '../src/onchain/pdp-status.js';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  CHALLENGE_GRACE_EPOCHS,
+  MockPDPStatusChecker,
+  RealPDPStatusChecker,
+  type RealPDPStatusCheckerDeps,
+} from '../src/onchain/pdp-status.js';
+
+/** Fake `Client` — RealPDPStatusChecker never inspects it directly, it just forwards it to the injected deps. */
+const fakeClient = {} as ConstructorParameters<typeof RealPDPStatusChecker>[0];
+
+function makeDeps(overrides: {
+  nextChallengeEpoch?: bigint | null | (() => Promise<bigint | null>);
+  lastProvenEpochRaw?: bigint | (() => Promise<bigint>);
+  onNextChallengeEpochError?: Error;
+  onLastProvenEpochError?: Error;
+}): RealPDPStatusCheckerDeps {
+  const getNextChallengeEpoch = vi.fn(async () => {
+    if (overrides.onNextChallengeEpochError) {
+      throw overrides.onNextChallengeEpochError;
+    }
+    const v = overrides.nextChallengeEpoch;
+    return typeof v === 'function' ? v() : (v ?? null);
+  }) as unknown as RealPDPStatusCheckerDeps['getNextChallengeEpoch'];
+
+  const getDataSetLastProvenEpoch = vi.fn(async () => {
+    if (overrides.onLastProvenEpochError) {
+      throw overrides.onLastProvenEpochError;
+    }
+    const v = overrides.lastProvenEpochRaw;
+    return typeof v === 'function' ? v() : (v ?? 0n);
+  });
+
+  const getContract = vi.fn(() => ({
+    read: { getDataSetLastProvenEpoch },
+  })) as unknown as RealPDPStatusCheckerDeps['getContract'];
+
+  return { getNextChallengeEpoch, getContract };
+}
 
 describe('MockPDPStatusChecker', () => {
   it('derives "verified" when proven and before next challenge epoch', async () => {
@@ -74,5 +111,62 @@ describe('MockPDPStatusChecker', () => {
     expect(result.status).toBe('unverified');
     expect(result.lastProvenEpoch).toBeNull();
     expect(result.nextChallengeEpoch).toBeNull();
+  });
+});
+
+describe('RealPDPStatusChecker', () => {
+  it('derives "verified" from realistic mocked contract return values', async () => {
+    const deps = makeDeps({ nextChallengeEpoch: 200n, lastProvenEpochRaw: 100n });
+    const checker = new RealPDPStatusChecker(fakeClient, deps);
+    const dataSetId = 1n;
+
+    const result = await checker.checkStatus(dataSetId, 150n);
+
+    expect(result).toEqual({
+      dataSetId,
+      currentEpoch: 150n,
+      lastProvenEpoch: 100n,
+      nextChallengeEpoch: 200n,
+      status: 'verified',
+    });
+    expect(deps.getNextChallengeEpoch).toHaveBeenCalledWith(fakeClient, { dataSetId });
+    expect(deps.getContract).toHaveBeenCalledWith({ client: fakeClient });
+  });
+
+  it('derives "unverified" when the contract reports "never proven" (0n sentinel)', async () => {
+    const deps = makeDeps({ nextChallengeEpoch: 200n, lastProvenEpochRaw: 0n });
+    const checker = new RealPDPStatusChecker(fakeClient, deps);
+
+    const result = await checker.checkStatus(2n, 50n);
+
+    expect(result.status).toBe('unverified');
+    expect(result.lastProvenEpoch).toBeNull();
+  });
+
+  it('derives "unverified" from a missed challenge (past grace window)', async () => {
+    const deps = makeDeps({ nextChallengeEpoch: 200n, lastProvenEpochRaw: 100n });
+    const checker = new RealPDPStatusChecker(fakeClient, deps);
+
+    const result = await checker.checkStatus(3n, 200n + CHALLENGE_GRACE_EPOCHS + 1n);
+
+    expect(result.status).toBe('unverified');
+  });
+
+  it('propagates a thrown error from getNextChallengeEpoch with dataSetId context', async () => {
+    const deps = makeDeps({ onNextChallengeEpochError: new Error('rpc boom') });
+    const checker = new RealPDPStatusChecker(fakeClient, deps);
+
+    await expect(checker.checkStatus(4n, 10n)).rejects.toThrow(
+      /PDP status check failed for dataSetId 4.*rpc boom/,
+    );
+  });
+
+  it('propagates a thrown error from the getDataSetLastProvenEpoch read with dataSetId context', async () => {
+    const deps = makeDeps({ nextChallengeEpoch: 200n, onLastProvenEpochError: new Error('contract revert') });
+    const checker = new RealPDPStatusChecker(fakeClient, deps);
+
+    await expect(checker.checkStatus(5n, 10n)).rejects.toThrow(
+      /PDP status check failed for dataSetId 5.*contract revert/,
+    );
   });
 });

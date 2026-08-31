@@ -91,11 +91,16 @@ Two parallel tracks.
 - If the real provider PDP integration proves flaky/opaque under time pressure (a risk the mentor flagged), I will propose falling back to "PDP mock in demo, documented as real-interface-compatible" rather than risk a broken live demo — I'll flag this explicitly if it happens, not decide it silently.
 
 **Exit checklist**
-- [ ] At least one real onchain top-up executes successfully against testnet
-- [ ] At least one real onchain drop/terminate executes successfully against testnet
-- [ ] Real or mock PDP status feeds the decision engine without changing its interface
+- [x] Real onchain top-up/drop actions wired (`src/onchain/actions.ts`) — genuinely call `synapse.payments.deposit()` / `synapse.storage.terminateService()`, not simulated
+- [ ] At least one LIVE onchain top-up executes successfully against testnet — **blocked on USDFC funding**, see below
+- [ ] At least one LIVE onchain drop/terminate executes successfully against testnet — **blocked on USDFC funding**, see below
+- [x] Real PDP status feeds the decision engine without changing its interface (`RealPDPStatusChecker` now fully implemented, shares `deriveStatus` with the mock)
 
-**Review:** `/code-review` (medium) + manual run-through of one full end-to-end cycle.
+**Status: CODE DONE, LIVE VERIFICATION PENDING.** `src/onchain/actions.ts` (`executeDecision`) wires the decision engine's output to real SDK calls behind a narrow `ActionExecutor` interface (verified a real `Synapse` instance structurally satisfies it). `RealPDPStatusChecker.checkStatus` now does real contract reads (`getNextChallengeEpoch` + `getDataSetLastProvenEpoch` via `getContract`, run concurrently) instead of throwing a stub. 51/51 tests passing, clean type-check.
+
+**[NEEDS YOU] — blocking live verification only, not the code itself:** the testnet wallet (`0x044c40FBC017C74273eF402655391D4372Cf715e`) has plenty of tFIL for gas but 0 USDFC — Filecoin Pay's token. Get testnet USDFC from https://forest-explorer.chainsafe.dev/faucet/calibnet_usdfc (5 tUSDFC/request, rate-limited to 1/60s). Without it we cannot deposit, create a real dataset/rail, or execute a live top-up/terminate — that live run is deferred to Phase 5 (Testing), where it's required before the exit checklist there can close. Phase 4 (UI + demo script) does not need this and proceeds now.
+
+**Review:** `/code-review` (medium) found 2 minor issues in the real PDP implementation, both fixed: (1) the two contract reads ran sequentially instead of concurrently (`Promise.all`), doubling latency for no reason; (2) the rethrown error dropped the original error via missing `{ cause }`, inconsistent with `actions.ts`'s pattern. Manual full-cycle dry-run performed (forecast -> band -> PDP-gated decision -> action execution against a mocked chain), covering green/none, red+verified/top-up, and the critical red+unverified/drop-dataset path — all three fired correctly end-to-end. Phase 4 gate open (Phase 3's live-verification checkbox carries forward to Phase 5).
 
 ---
 
