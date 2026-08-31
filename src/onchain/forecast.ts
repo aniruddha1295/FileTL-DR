@@ -27,6 +27,16 @@ export const MAX_UINT256 = 11579208923731619542357098500868790785326998466564056
 
 const DEFAULT_EPOCHS_PER_DAY = 2880n;
 
+/**
+ * Shared epoch-ascending sort, exported so callers (e.g. the decision
+ * engine) that also need "the latest snapshot" don't hand-roll their own
+ * copy of this comparator — a second independent copy would risk silently
+ * desyncing from this one on a future change to tie-breaking semantics.
+ */
+export function sortByEpoch<T extends { epoch: bigint }>(items: T[]): T[] {
+  return [...items].sort((a, b) => (a.epoch < b.epoch ? -1 : a.epoch > b.epoch ? 1 : 0));
+}
+
 function toDays(epochs: bigint | null, epochsPerDay: bigint): number | null {
   if (epochs === null) return null;
   const denom = epochsPerDay === 0n ? DEFAULT_EPOCHS_PER_DAY : epochsPerDay;
@@ -76,7 +86,7 @@ export function forecastRunway(
     };
   }
 
-  const sorted = [...history].sort((a, b) => (a.epoch < b.epoch ? -1 : a.epoch > b.epoch ? 1 : 0));
+  const sorted = sortByEpoch(history);
   const latest = sorted[sorted.length - 1];
 
   // 1 (checked first, unconditionally). The max-uint256 sentinel means

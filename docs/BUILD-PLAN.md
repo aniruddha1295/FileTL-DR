@@ -64,11 +64,20 @@ Single track — this is the heart of the 30% judging criterion, sequential and 
 - Unit tests covering: all three bands, both red-band branches (top-up path AND drop path), edge cases at band boundaries
 
 **Exit checklist**
-- [ ] Decision engine is a pure, isolated module (no UI/network dependencies)
-- [ ] Both red-band branches proven to trigger correctly in tests, not just the happy path
-- [ ] Trace output is human-readable and matches the format needed for demo narration
+- [x] Decision engine is a pure, isolated module (no UI/network dependencies)
+- [x] Both red-band branches proven to trigger correctly in tests, not just the happy path
+- [x] Trace output is human-readable and matches the format needed for demo narration
 
-**Review:** `/code-review` (high effort — this is the highest-stakes module) before opening Phase 3 gate.
+**Status: DONE.** `src/decision-engine/index.ts` — pure `evaluate(accountHistory, pdpStatus, config?) => DecisionTrace`. Three-tier bands (green >=70% inclusive, red <30% exclusive) measured against `grossCoverageInEpochs` (or an explicit `targetRunwayEpochs` override) as the 100% baseline. Compound red-band rule: PDP verified -> aggressive top-up to 100% baseline; unverified -> drop-dataset, no top-up; verifying (grace window) -> hold-and-monitor, neither top-up nor drop. 37/37 tests passing, clean type-check.
+
+**Review:** `/code-review` (high) found 5 real issues, all fixed:
+1. Top-up sizing returned `null` for a fully-exhausted account (0 epochs remaining, 0 rate) — exactly the scenario needing a concrete number most. Fixed with a fallback to the observed decline rate between the two most recent snapshots.
+2. `epochsForPercent` truncated instead of rounding up, letting small baselines produce a self-contradictory "top-up of 0" in the yellow band. Fixed with ceiling division.
+3. The unverified-branch reason string could render a literal "epoch null" when `nextChallengeEpoch` was unset. Fixed with a `?? 'unknown'` fallback.
+4. No validation that `greenThresholdPercent > redThresholdPercent` — a misconfigured/swapped config would silently invert band semantics. Fixed: throws on construction.
+5. The epoch-sort comparator was duplicated between `forecast.ts` and the decision engine, risking silent desync. Fixed by extracting a shared `sortByEpoch` export from `forecast.ts`.
+
+5 new regression tests added (37 total, up from 32). Re-verified: all pass, clean type-check. Phase 3 gate open.
 
 ---
 
