@@ -44,11 +44,13 @@ Two parallel tracks once Phase 0 is green.
 - This lets the decision engine (Phase 2) build/test against a stable contract while real PDP integration happens later (Phase 3)
 
 **Exit checklist**
-- [ ] Runway/forecast module has passing unit tests
-- [ ] Mock PDP module returns all three states on demand, matches expected real interface
-- [ ] Both merged, no conflicts
+- [x] Runway/forecast module has passing unit tests
+- [x] Mock PDP module returns all three states on demand, matches expected real interface
+- [x] Both merged, no conflicts
 
-**Review:** run `/code-review` (medium effort) on Track A + B diff before opening Phase 2 gate.
+**Status: DONE.** `src/onchain/forecast.ts` (11 tests) + `src/onchain/pdp-status.ts` (6 tests), 17/17 passing, `tsc --noEmit` clean across the repo. Real Phase 3 import path for PDP verified against actual package exports (`@filoz/synapse-core/pdp-verifier`), not guessed.
+
+**Review:** `/code-review` (medium) found 2 real bugs in `forecast.ts` — (1) the "sanity cross-check against wildly disagreeing derived value" was promised in a comment but never implemented (dead code, unreachable branch); (2) the max-uint256 sentinel was only checked when `lockupRatePerEpoch === 0n`, so an inconsistent contract state (nonzero rate + sentinel) would've produced a ~4e73-day finite forecast instead of "infinite". Both fixed with real logic + new tests (sentinel-wins-unconditionally, wildly-disagreeing-falls-back, roughly-agreeing-stays-high-confidence). Re-verified: 17/17 tests pass, clean type-check. Phase 2 gate open.
 
 ---
 
