@@ -22,10 +22,12 @@ Not parallelized — everything downstream depends on this.
 - Confirmed: new public GitHub repo — I'll propose a name and confirm before first push
 
 **Exit checklist**
-- [ ] Repo scaffolded, dependencies install cleanly
-- [ ] One real, verified `getAccountSummary` call returns live testnet data (raw response logged, not assumed)
+- [x] Repo scaffolded, dependencies install cleanly
+- [x] One real, verified `getAccountSummary` call returns live testnet data (raw response logged, not assumed)
 
-**Review:** quick self-check only (too early for code review) — confirm exit checklist before Phase 1.
+**Status: DONE.** Verified against real SDK source (`@filoz/synapse-core` v0.8.1 `get-account-summary.d.ts`), not docs summaries. Live call against wallet `0x044c40FBC017C74273eF402655391D4372Cf715e` on calibration testnet returned real epoch `4028086`, `funds: 0` (account not yet deposited into Filecoin Pay), and `runwayInEpochs`/`grossCoverageInEpochs` at max-uint256 (the contract's correct "infinite runway" sentinel when `lockupRatePerEpoch` is 0 — no active payment rail yet). This account will need a deposit + an active storage rail before runway becomes a finite, meaningful number — relevant for Phase 1/3.
+
+**Review:** self-check passed — real SDK method names/shapes verified against package source, not assumed from docs. Confirmed before opening Phase 1.
 
 ---
 
