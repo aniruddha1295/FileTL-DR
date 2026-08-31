@@ -8,7 +8,9 @@
     "build": "tsc -p tsconfig.json",
     "test": "node --experimental-vm-modules node_modules/.bin/vitest run",
     "test:watch": "vitest",
-    "check-account": "tsx src/onchain/check-account.ts"
+    "check-account": "tsx src/onchain/check-account.ts",
+    "demo": "tsx src/demo/run-live-demo.ts",
+    "demo:cli-only": "tsx src/demo/run-drain-cli.ts"
   },
   "dependencies": {
     "@filoz/synapse-sdk": "1.2.1",
