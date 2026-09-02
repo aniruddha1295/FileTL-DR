@@ -8,12 +8,10 @@ Invoke the `loops-filecointldr-builder-challenge-cycle-4` skill for ANY work in 
 ## Goal
 Build an AI agent, workflow, or tool that reads its own onchain balance/runway on Filecoin Pay and *acts* on it autonomously (top up, cut unaffordable storage, or decide what's worth paying to keep). The decision-making must be visible and autonomous — not a human making each call.
 
-## Build directions (pick one or invent your own)
-- Stay alive: watch runway, top up before it runs dry
-- Triage: decide which data to keep when budget is tight, explain the reasoning
-- Show the meter: dashboard visualizing agent spend/settle/justify decisions
-- Delegate: one agent funds another's work and enforces a budget
-- Pay on proof: payment only released once work is provably done
+## Chosen concept: Tiered Runway Triage Agent
+Decided (see `docs/01-IDEATE.md`'s "Notes / chosen concept" for the full reasoning) — a combined Triage + Pay-on-proof direction: a single-account, single-dataset agent that reads its Filecoin Pay runway into three tiers (green/yellow/red) and, in the red tier, chains a second real primitive — PDP proof status — into the decision: top up if the provider's proof verifies, drop the dataset (no top-up) if it doesn't. Repo: https://github.com/aniruddha1295/FileTL-DR.
+
+**For current build status, read [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) first** — it's the concrete, phase-gated execution log (real exit criteria, code-review findings, live-verification evidence) that superseded the generic candidate-direction brainstorming below once building started.
 
 ## Constraints
 - Must interact with the real Filecoin stack (Filecoin Pay / Filecoin Onchain Cloud), not simulate it.
@@ -31,9 +29,9 @@ Build an AI agent, workflow, or tool that reads its own onchain balance/runway o
 - Gstack (reference implementation/toolkit): https://github.com/garrytan/gstack
 
 ## Phase docs — read the one matching current work
-This project moves through four phases, each with its own doc in `docs/`. Before doing work in a given phase, read that phase's doc and follow its checklist/exit criteria — don't skip ahead.
+- `docs/BUILD-PLAN.md` — **the actual execution log; read this first.** Phase 0–6, gated on real exit criteria, updated after every phase with code-review findings and (from Phase 3 onward) live on-chain verification evidence.
 - `docs/00-OVERVIEW.md` — index + judging weights
-- `docs/01-IDEATE.md` — use while choosing the concept/decision rule
-- `docs/02-BUILD.md` — use while implementing the decision engine and onchain integration
-- `docs/03-TEST.md` — use while verifying the end-to-end demo works against real onchain state
-- `docs/04-EVALUATE.md` — use before submission, to self-score against judging criteria and prep the showcase materials
+- `docs/01-IDEATE.md` — the ideation reasoning behind the chosen concept (already decided, see above)
+- `docs/02-BUILD.md` — build-phase checklist, now checked off against what was actually built
+- `docs/03-TEST.md` — testing checklist, now checked off against the live verification actually performed
+- `docs/04-EVALUATE.md` — self-scoring rubric; filled in, with the two remaining gaps (demo video, X post) explicitly marked

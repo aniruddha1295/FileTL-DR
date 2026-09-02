@@ -9,27 +9,27 @@ Prerequisite: 01-IDEATE.md exit criteria are met (decision rule, actions, FOC pr
 ## Architecture checklist
 
 1. **Onchain read path**
-   - [ ] Identify the exact contract/SDK call for balance and runway (Filecoin Pay docs / Synapse SDK).
-   - [ ] Confirm it returns real, current data from testnet (log the raw response once, don't trust an assumption).
-   - [ ] No hardcoded balances or runway numbers anywhere in the decision path.
+   - [x] Identify the exact contract/SDK call for balance and runway (Filecoin Pay docs / Synapse SDK). → `synapse.payments.accountSummary()`, verified against `@filoz/synapse-core` source, not docs summaries (Phase 0).
+   - [x] Confirm it returns real, current data from testnet (log the raw response once, don't trust an assumption). → done live in Phase 0 and again in the Phase 3/5 live verification (`src/onchain/live-verify.ts`).
+   - [x] No hardcoded balances or runway numbers anywhere in the decision path. → `forecastRunway`/`evaluate` take real `AccountSummary` history only; no constants substitute for a read.
 
 2. **Decision engine (the core deliverable)**
-   - [ ] Implement the if/then rule from 01-IDEATE.md as an isolated function/module, independent of any UI.
-   - [ ] It takes onchain state in, returns a decision + a human-readable reason out.
-   - [ ] Write down (in code comments or a log line) the *reason* for each decision — judges need to see the agent "explain the call."
-   - [ ] Handle both branches: the case where budget is fine AND the case where it isn't. Demo must show both, or at least the "budget's tight" branch triggering visibly.
+   - [x] Implement the if/then rule from 01-IDEATE.md as an isolated function/module, independent of any UI. → `src/decision-engine/index.ts`, pure, zero I/O.
+   - [x] It takes onchain state in, returns a decision + a human-readable reason out. → `DecisionTrace.reason`.
+   - [x] Write down (in code comments or a log line) the *reason* for each decision. → every `evaluate()` call returns a plain-English `reason` referencing the real band/percent/PDP status.
+   - [x] Handle both branches: budget fine AND budget tight. → three-tier bands + the compound red-band branch (verified/verifying/unverified), all covered by tests and by the live-verify run (green/none case) and the demo drain scenario (all three bands + both red-band outcomes).
 
 3. **Action execution**
-   - [ ] Wire the decision engine's output to a real action: a Filecoin Pay top-up/settlement, a storage deal drop, a proof check via PDP, a delegated budget transfer, etc.
-   - [ ] Action must actually execute onchain (or against the real testnet/SDK) — not print "would have done X."
+   - [x] Wire the decision engine's output to a real action. → `src/onchain/actions.ts` (`executeDecision`) calls real `payments.deposit()` / `storage.terminateService()`.
+   - [x] Action must actually execute onchain, not print "would have done X." → live-verified: real deposit (block 4033898) and real terminate, both confirmed on-chain — see `docs/BUILD-PLAN.md` Phase 3.
 
 4. **Observability (this is what makes the decision "watchable")**
-   - [ ] Pick ONE mechanism: a live dashboard, a narrated CLI trace, or an event log a judge can scrub through. Don't build all three.
-   - [ ] Every decision event should show: the onchain input that triggered it, the rule applied, the action taken, and the resulting new state (e.g., new runway).
+   - [x] Pick ONE mechanism. → a live dashboard (`src/ui/server.ts`), not a narrated-CLI-only or log-scrub approach.
+   - [x] Every decision event shows: the onchain input, the rule applied, the action taken, and the resulting state. → the dashboard's decision log entries + `DecisionTraceDetails`.
 
 5. **Scope control**
-   - [ ] MVP cut list agreed up front — if time runs short, what's the first thing dropped? (e.g., multi-agent delegation before single-agent triage; fancy dashboard styling before the decision engine)
-   - [ ] Don't build support for hypothetical future sponsors/bounties not in scope for this submission.
+   - [x] MVP cut list agreed up front. → single provider/dataset scope held throughout; multi-dataset triage, disputes, and multi-rail settlement explicitly cut (see `docs/01-IDEATE.md`).
+   - [x] No support built for hypothetical future sponsors/bounties out of scope.
 
 ## Suggested build order
 1. Get a testnet wallet funded and confirm you can read its Filecoin Pay balance/runway from code. Do this before writing any agent logic.
@@ -44,5 +44,7 @@ Prerequisite: 01-IDEATE.md exit criteria are met (decision rule, actions, FOC pr
 - Gstack (reference implementation/toolkit) — https://github.com/garrytan/gstack
 
 ## Exit criteria for this phase
-- Decision engine runs end-to-end against real onchain reads and produces a real onchain action, at least once.
-- The specific moment of decision can be pointed to in code (a function/line) and in a run (a log line/dashboard event).
+- [x] Decision engine runs end-to-end against real onchain reads and produces a real onchain action, at least once. → live-verified, `docs/BUILD-PLAN.md` Phase 3/5.
+- [x] The specific moment of decision can be pointed to in code (`src/decision-engine/index.ts`, `evaluate()`) and in a run (dashboard decision-log entry, or `[step] band=... action=...` CLI line).
+
+**Phase complete.** See `docs/BUILD-PLAN.md` Phases 0–4 for the full build log, including every bug caught by code review and fixed before gating forward.

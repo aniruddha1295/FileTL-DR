@@ -50,6 +50,8 @@ Every primitive below was executed for real, on-chain, and is independently chec
 
 No hardcoded balances, no mocked proofs, no simulated transactions in this path. Reproduce it yourself: `npm run live-verify` (see [Running it](#running-it)).
 
+> **A note on honesty:** `npm run demo` (the dashboard walkthrough above) is a **deterministic, scripted narrative** — it drives the real decision engine through a repeatable green→yellow→red sequence so the compound decision is reliably watchable, rather than depending on live network/proof timing that could stall or misfire during a demo. It is clearly separate code (`src/demo/`) from the real on-chain path (`src/onchain/live-verify.ts`), which is what actually touched calibration testnet and produced the table above. Both matter: one proves the logic is watchable, the other proves it's real. Neither is presented as the other.
+
 ## Architecture
 
 ```
@@ -120,9 +122,13 @@ npm run live-verify             # reproduce the full real on-chain verification 
 | **Autonomous budget decisions** | 30% | `src/decision-engine/index.ts` — the compound rule, zero human in the loop at decision time |
 | **Working demo quality** | 25% | `npm run demo` — live dashboard, forced scarcity, decision fires on screen |
 | **Meaningful use of Filecoin** | 20% | Real Filecoin Pay deposits, real PDP proof reads, real dataset creation — see the verification table above |
-| **Clarity + showcase** | 15% | This README, the decision trace's plain-English `reason` field, demo video |
+| **Clarity + showcase** | 15% | This README, the decision trace's plain-English `reason` field, demo video (in progress) |
 
 ## Project status
+
+**Done:** real Synapse SDK integration, the decision engine (37 tests, high-effort code-reviewed), real payment/PDP actions, a live dashboard + deterministic demo, Docker packaging, and a full live on-chain verification run on calibration testnet (table above).
+
+**In progress:** demo video, X post, final `loops evaluate` self-score before submission.
 
 Built phase-by-phase with code review and tests gating every step — see [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) for the full history, including every bug caught and fixed along the way.
 
