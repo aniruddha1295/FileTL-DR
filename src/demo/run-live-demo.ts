@@ -58,7 +58,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     },
   };
 
+  // Fixed, configurable port (not the library default of 0/ephemeral) so
+  // this can be published predictably from a container (`docker run -p`).
+  const port = process.env.PORT ? Number(process.env.PORT) : 3000;
+
   const { url, stop, traces } = await runLiveDemo(consoleExecutor, {
+    port,
     stepDelayMs: 1500,
     onStep: (_h, trace) => console.log(`[step] band=${trace.band} action=${trace.action}`),
   });

@@ -86,17 +86,32 @@ TypeScript · Node.js · [Synapse SDK](https://www.npmjs.com/package/@filoz/syna
 
 ## Running it
 
-```bash
-npm install
-cp .env.example .env   # fill in a testnet private key — see .env.example
+### Fastest path: Docker, zero setup
 
-npm test                        # 63 tests, the whole decision engine + integrations
-npm run check-account           # one real, live balance/runway read
-npm run demo                    # the full scripted demo: dashboard + drain scenario
-npm run live-verify             # reproduce the full real on-chain verification above
+No Node, no npm install, no `.env` — the demo needs no real wallet at all (it narrates through a logging stand-in, not a live account):
+
+```bash
+docker build -t triage-agent .
+docker run -p 3000:3000 triage-agent
 ```
 
-`npm run demo` starts a live dashboard (default `http://localhost:PORT`, printed on start) and walks the account through green → yellow → red, showing the compound decision fire in real time.
+Open `http://localhost:3000` and watch the agent walk green → yellow → red, firing the compound decision live. The image runs the full test suite and type-check as part of `docker build`, so a broken build fails there, not on `docker run`.
+
+### Locally, with npm
+
+```bash
+npm install
+npm test                        # 63 tests, the whole decision engine + integrations
+npm run demo                    # the full scripted demo: dashboard + drain scenario, http://localhost:3000
+```
+
+To reproduce the real on-chain verification (needs your own funded testnet wallet):
+
+```bash
+cp .env.example .env   # fill in a testnet private key — see .env.example
+npm run check-account           # one real, live balance/runway read
+npm run live-verify             # reproduce the full real on-chain verification above
+```
 
 ## Judging criteria, mapped
 
