@@ -171,4 +171,36 @@ describe('runDrainScenario', () => {
       expect(lastTotal).toBe(traces.length);
     });
   });
+
+  describe('failure path: transient RPC/API unavailability degrades visibly, not silently', () => {
+    it('propagates a rejection from a real action call and halts the scenario immediately, rather than continuing with a fabricated/partial result', async () => {
+      const executor = makeMockExecutor();
+      // Simulate a transient RPC failure on whichever step first calls deposit
+      // (the first yellow-band top-up in the default sequence).
+      executor.payments.deposit.mockRejectedValueOnce(new Error('RPC timeout: no response from node'));
+
+      const onStep = vi.fn();
+
+      await expect(
+        runDrainScenario(executor, { stepDelayMs: 0, onStep })
+      ).rejects.toThrow(/RPC timeout/);
+
+      // onStep only fires AFTER a step's executeDecision succeeds, so a call
+      // count under the full 9-step sequence proves the loop genuinely
+      // stopped at the failure rather than continuing with a fabricated
+      // success for the failed step or any step after it.
+      expect(onStep.mock.calls.length).toBeLessThan(9);
+    });
+
+    it('propagates a rejection from the real drop-dataset (terminateService) call the same way', async () => {
+      const executor = makeMockExecutor();
+      // The default 9-step sequence's final step is red+unverified -> drop-dataset,
+      // which is the only step that calls terminateService. Fail exactly that call.
+      executor.storage.terminateService.mockRejectedValueOnce(new Error('provider unreachable'));
+
+      await expect(
+        runDrainScenario(executor, { stepDelayMs: 0, finalPdpStatus: 'unverified' })
+      ).rejects.toThrow(/provider unreachable/);
+    });
+  });
 });

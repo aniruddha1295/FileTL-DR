@@ -21,7 +21,7 @@ Prerequisite: 02-BUILD.md exit criteria met (end-to-end run against real onchain
 ### End-to-end demo run
 - [x] Time a full clean run from a fresh state. → `docker run -p 3000:3000 triage-agent` IS a fresh-state run by construction — no leftover state possible, verified by actually building and running the image.
 - [x] Confirm the "moment of decision" is visible and identifiable within the run, not buried in scrollback. → the dashboard's decision-log entries + the CLI's `[step] band=... action=...` lines.
-- [ ] Test the failure path: RPC/API briefly unavailable should degrade visibly, not crash silently. → errors propagate and are logged (not swallowed), but no dedicated test simulates a transient RPC outage mid-run. Accepted gap given the remaining timeline — flagged, not silently skipped.
+- [x] Test the failure path: RPC/API briefly unavailable should degrade visibly, not crash silently. → `tests/drain-scenario.test.ts` "failure path" suite: a transient failure on a real action call (deposit or terminateService) propagates and halts the scenario immediately — no fabricated success, no continued/corrupted state, no swallowed error.
 
 ### Non-happy-path robustness (only as much as the demo window needs)
 - [x] Re-running the demo twice in a row doesn't require manual cleanup/reset steps. → `npm run demo` / `docker run` both start from a fresh in-memory state every time; no external state file.
