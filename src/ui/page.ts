@@ -10,22 +10,29 @@
  * offline/self-contained for the demo — no CDN dependency, works inside the
  * zero-install Docker image with no network access needed).
  *
- * Icons are hand-written inline SVGs (stroke-based, 20x20, 2px stroke) —
- * no icon font, no emoji — so every status is conveyed by icon + color +
- * text together, never color alone.
+ * Icons are hand-written inline SVGs (stroke-based) — no icon font, no
+ * emoji — so every status is conveyed by icon + color + text together,
+ * never color alone.
  *
  * Interactive controls: 4 buttons POST to /simulate/:name (server.ts +
  * src/demo/run-live-demo.ts), each running the REAL decision engine on
  * demand — this is what turns the page from a passive recording into
  * something a presenter actually operates live.
  *
- * Visual design: "Institutional Fintech" — a near-neutral charcoal theme
- * (never pure black/white), a single muted slate-blue accent, and
- * desaturated sage/ochre/dusty-rose standing in for green/yellow/red so
- * status reads as information rather than a warning light. Hierarchy comes
- * from type weight/size/space, not color blocks. Filecoin Pay and PDP are
- * named explicitly (wordmark, badges, renamed cards, persistent verification
- * strip) so the on-chain anchor is unmistakable, not just visually implied.
+ * Visual design: a "floating product dashboard" layout (gradient backdrop,
+ * a large rounded dark shell, pill navigation, a big hero stat, a
+ * card-grid + list-style decision log below) — modeled on the visual
+ * language of polished SaaS dashboard product shots, adapted to this
+ * project's actual data (no fabricated widgets). Filecoin Pay and PDP are
+ * named explicitly throughout so the on-chain anchor is unmistakable.
+ *
+ * IMPORTANT for future edits: every element id/class queried by the
+ * <script> block below (bandCard, bandIcon, bandLabel, bandSub, gaugeFill,
+ * gaugePercentLabel, estimatedDaysRemaining, estimatedEpochsRemaining,
+ * pdpStatus, actionBadge, log, logCount, controlsRow, verifyIcon,
+ * pdpPillIcon, .btn/data-scenario/.btn-icon) is load-bearing — restyle
+ * freely, but keep those hooks intact or the JS (and tests/ui.test.ts /
+ * tests/run-live-demo.test.ts) will break.
  */
 export const DASHBOARD_HTML = `<!doctype html>
 <html lang="en">
@@ -36,104 +43,146 @@ export const DASHBOARD_HTML = `<!doctype html>
 <style>
   :root {
     color-scheme: dark;
-    --bg: #0f1115;
-    --surface: #15181e;
-    --surface-2: #1a1e26;
+    --page-bg: #08080c;
+    --shell-bg: #0c0c11;
+    --surface: #17171f;
+    --surface-2: #1e1e28;
     --border: rgba(255,255,255,0.07);
     --border-strong: rgba(255,255,255,0.14);
-    --text: #e4e6eb;
-    --text-muted: #9297a3;
-    --text-faint: #5c6270;
-    --accent: #5b7fa6;
-    --accent-bg: rgba(91,127,166,0.12);
-    --accent-border: rgba(91,127,166,0.35);
-    --green: #7a9e8a;
-    --green-bg: rgba(122,158,138,0.10);
-    --green-border: rgba(122,158,138,0.30);
-    --yellow: #b9a26e;
-    --yellow-bg: rgba(185,162,110,0.10);
-    --yellow-border: rgba(185,162,110,0.30);
-    --red: #b17878;
-    --red-bg: rgba(177,120,120,0.10);
-    --red-border: rgba(177,120,120,0.30);
-    --indigo: #8890a0;
-    --indigo-bg: rgba(136,144,160,0.10);
-    --indigo-border: rgba(136,144,160,0.30);
+    --text: #eceef3;
+    --text-muted: #9599ab;
+    --text-faint: #5c6075;
+    --accent: #8b7cf6;
+    --accent-bg: rgba(139,124,246,0.14);
+    --accent-border: rgba(139,124,246,0.38);
+    --green: #6fcf97;
+    --green-bg: rgba(111,207,151,0.12);
+    --green-border: rgba(111,207,151,0.32);
+    --yellow: #e0b357;
+    --yellow-bg: rgba(224,179,87,0.12);
+    --yellow-border: rgba(224,179,87,0.32);
+    --red: #ea6f6f;
+    --red-bg: rgba(234,111,111,0.12);
+    --red-border: rgba(234,111,111,0.32);
+    --indigo: #9d95d8;
+    --indigo-bg: rgba(157,149,216,0.12);
+    --indigo-border: rgba(157,149,216,0.32);
     --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     --font-mono: ui-monospace, 'SFMono-Regular', 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     margin: 0;
     font-family: var(--font-sans);
-    background: var(--bg);
     color: var(--text);
-    padding: 36px clamp(16px, 4vw, 48px) 56px;
     -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(900px 560px at 8% -8%, rgba(139,124,246,0.24), transparent 60%),
+      radial-gradient(900px 640px at 96% 108%, rgba(63,190,201,0.16), transparent 60%),
+      var(--page-bg);
+    padding: clamp(20px, 4vw, 56px) clamp(14px, 3vw, 28px);
+    min-height: 100vh;
   }
-  .wrap { max-width: 1120px; margin: 0 auto; }
 
-  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
-  .title-block .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 6px; }
-  .title-block h1 { font-size: 20px; font-weight: 650; margin: 0 0 4px; color: var(--text); letter-spacing: -0.01em; }
-  .title-block p { margin: 0; font-size: 13px; color: var(--text-muted); }
+  .shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    background: var(--shell-bg);
+    border: 1px solid var(--border-strong);
+    border-radius: 24px;
+    padding: clamp(20px, 3vw, 32px) clamp(20px, 3.5vw, 36px) 30px;
+    box-shadow: 0 30px 80px -30px rgba(0,0,0,0.6);
+  }
 
+  /* ---- Top nav ---- */
+  .topnav { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(155deg, var(--accent), #3fbec9); flex-shrink: 0; }
+  .brand-name { font-size: 14.5px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
   .status-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .live-pill {
+  .pill {
     display: inline-flex; align-items: center; gap: 7px;
-    padding: 6px 12px; border-radius: 999px;
+    padding: 7px 13px; border-radius: 999px;
     background: var(--surface); border: 1px solid var(--border-strong);
     font-size: 11.5px; font-weight: 600; color: var(--text-muted);
-    letter-spacing: 0.05em; text-transform: uppercase;
+    letter-spacing: 0.03em; white-space: nowrap;
   }
-  .live-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--green); box-shadow: 0 0 0 0 rgba(122,158,138,0.5); animation: pulse 2s infinite; flex-shrink: 0; }
+  .live-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--green); box-shadow: 0 0 0 0 rgba(111,207,151,0.5); animation: pulse 2s infinite; flex-shrink: 0; }
   @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(122,158,138,0.45); }
-    70% { box-shadow: 0 0 0 6px rgba(122,158,138,0); }
-    100% { box-shadow: 0 0 0 0 rgba(122,158,138,0); }
+    0% { box-shadow: 0 0 0 0 rgba(111,207,151,0.45); }
+    70% { box-shadow: 0 0 0 6px rgba(111,207,151,0); }
+    100% { box-shadow: 0 0 0 0 rgba(111,207,151,0); }
   }
-  .pdp-pill {
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 6px 12px; border-radius: 999px;
-    background: var(--accent-bg); border: 1px solid var(--accent-border);
-    font-size: 11.5px; font-weight: 600; color: var(--text);
-    letter-spacing: 0.02em;
-    position: sticky; top: 8px; z-index: 5;
-  }
+  .pdp-pill { background: var(--accent-bg); border-color: var(--accent-border); color: var(--text); }
   .pdp-pill .icon-sm { color: var(--accent); }
 
-  .icon { width: 19px; height: 19px; flex-shrink: 0; }
+  .icon { width: 20px; height: 20px; flex-shrink: 0; }
   .icon-sm { width: 14px; height: 14px; flex-shrink: 0; }
 
-  /* Persistent verification strip: infrastructure/status-bar, not a banner */
+  /* ---- Verification strip ---- */
   .verify-strip {
     display: flex; align-items: center; gap: 10px;
-    background: var(--surface-2);
-    border-top: 1px solid var(--border-strong);
-    border-bottom: 1px solid var(--border-strong);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
     padding: 11px 16px;
-    margin: 20px 0;
+    margin-bottom: 20px;
     font-size: 12.5px; line-height: 1.5; color: var(--text-muted);
   }
-  .verify-strip .icon-sm { color: var(--text-faint); flex-shrink: 0; }
-  .verify-strip strong { font-weight: 600; color: var(--text); }
+  .verify-strip .icon-sm { color: var(--accent); flex-shrink: 0; }
+  .verify-strip strong { font-weight: 700; color: var(--text); }
 
-  /* Interactive controls */
+  /* ---- Hero ---- */
+  .hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 18px; }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 8px; }
+  .hero h1 { font-size: clamp(24px, 3vw, 32px); font-weight: 700; margin: 0 0 8px; color: var(--text); letter-spacing: -0.015em; }
+  .hero-sub { margin: 0; font-size: 13.5px; color: var(--text-muted); max-width: 46ch; }
+
+  .hero-stat { text-align: right; }
+  .hero-stat-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; }
+  .hero-number-row { display: flex; align-items: center; gap: 12px; justify-content: flex-end; }
+  #gaugePercentLabel { font-family: var(--font-mono); font-size: clamp(26px, 3.4vw, 34px); font-weight: 700; color: var(--text); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .band-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px; font-weight: 700; font-size: 12.5px;
+    text-transform: uppercase; letter-spacing: 0.03em;
+    border: 1px solid transparent;
+  }
+  #bandCard.band-green .band-pill { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
+  #bandCard.band-yellow .band-pill { background: var(--yellow-bg); color: var(--yellow); border-color: var(--yellow-border); }
+  #bandCard.band-red .band-pill { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
+  #bandCard.band-insufficient-data .band-pill { background: var(--indigo-bg); color: var(--indigo); border-color: var(--indigo-border); }
+  #bandSub { display: block; margin-top: 6px; font-size: 12.5px; color: var(--text-muted); }
+
+  /* #bandCard is now a layout wrapper (hero + gauge), not a colored block */
+  #bandCard { margin-bottom: 26px; }
+
+  .gauge-track { position: relative; height: 8px; border-radius: 999px; background: var(--surface-2); overflow: visible; margin-bottom: 8px; }
+  .gauge-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 999px; transition: width 0.6s cubic-bezier(0.22,1,0.36,1), background-color 0.35s ease; }
+  .gauge-fill.band-green { background: var(--green); }
+  .gauge-fill.band-yellow { background: var(--yellow); }
+  .gauge-fill.band-red { background: var(--red); }
+  .gauge-fill.band-insufficient-data { background: var(--indigo); }
+  .gauge-tick { position: absolute; top: -3px; width: 1px; height: 14px; background: var(--border-strong); }
+  .gauge-labels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-faint); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  /* ---- Controls (pill button row, like a nav/action bar) ---- */
   .controls {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; padding: 16px 18px; margin-bottom: 0;
+    border-radius: 16px; padding: 16px 18px; margin-bottom: 26px;
   }
-  .controls-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); font-weight: 600; margin-bottom: 12px; }
+  .controls-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); font-weight: 700; margin-bottom: 12px; }
   .controls-row { display: flex; flex-wrap: wrap; gap: 8px; }
   .btn {
     display: inline-flex; align-items: center; gap: 7px;
     font-family: var(--font-sans); font-size: 12.5px; font-weight: 600;
-    padding: 9px 14px; border-radius: 8px; cursor: pointer;
+    padding: 10px 16px; border-radius: 999px; cursor: pointer;
     background: var(--surface-2); color: var(--text); border: 1px solid var(--border-strong);
     transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
-    min-height: 38px;
+    min-height: 40px;
   }
-  .btn:hover:not(:disabled) { background: #21252e; border-color: var(--accent-border); }
+  .btn:hover:not(:disabled) { background: #262632; border-color: var(--accent-border); }
   .btn:active:not(:disabled) { transform: scale(0.97); }
   .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -141,132 +190,122 @@ export const DASHBOARD_HTML = `<!doctype html>
   .btn-verified:hover:not(:disabled) { border-color: var(--accent-border); }
   .btn-unverified { border-color: var(--red-border); }
   .btn-unverified:hover:not(:disabled) { background: var(--red-bg); }
-  .btn-auto { margin-left: auto; }
+  .btn-auto { margin-left: auto; background: var(--text); color: #0c0c11; border-color: var(--text); }
+  .btn-auto:hover:not(:disabled) { background: #d7d9e2; }
   .spin { animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (max-width: 640px) { .btn-auto { margin-left: 0; } }
 
-  #bandCard {
-    border-radius: 10px;
-    padding: 22px 26px;
-    margin-top: 20px;
-    margin-bottom: 32px;
-    border: 1px solid var(--border-strong);
-    background: var(--surface);
-    transition: background-color 0.35s ease, border-color 0.35s ease;
-  }
-  #bandCard.band-green { background: var(--green-bg); border-color: var(--green-border); }
-  #bandCard.band-yellow { background: var(--yellow-bg); border-color: var(--yellow-border); }
-  #bandCard.band-red { background: var(--red-bg); border-color: var(--red-border); }
-  #bandCard.band-insufficient-data { background: var(--indigo-bg); border-color: var(--indigo-border); }
-
-  .band-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-  .band-top .icon { width: 22px; height: 22px; }
-  #bandLabel { font-size: 19px; font-weight: 650; letter-spacing: -0.01em; text-transform: uppercase; }
-  .band-green #bandLabel, .band-green .band-icon { color: var(--green); }
-  .band-yellow #bandLabel, .band-yellow .band-icon { color: var(--yellow); }
-  .band-red #bandLabel, .band-red .band-icon { color: var(--red); }
-  .band-insufficient-data #bandLabel, .band-insufficient-data .band-icon { color: var(--indigo); }
-  #bandSub { font-size: 13px; color: var(--text-muted); margin-left: 4px; }
-
-  .gauge-track { position: relative; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06); overflow: visible; margin-bottom: 8px; }
-  .gauge-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.22,1,0.36,1), background-color 0.35s ease; }
-  .band-green .gauge-fill { background: var(--green); }
-  .band-yellow .gauge-fill { background: var(--yellow); }
-  .band-red .gauge-fill { background: var(--red); }
-  .band-insufficient-data .gauge-fill { background: var(--indigo); }
-  .gauge-tick { position: absolute; top: -3px; width: 1px; height: 12px; background: var(--text-faint); }
-  .gauge-labels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-faint); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-  .gauge-percent { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-muted); }
-
-  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+  /* ---- Card grid (analytics-card style) ---- */
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 26px; }
   @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 16px;
     padding: 18px 20px;
   }
-  .card h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); margin: 0 0 8px; font-weight: 600; }
-  .card .subcaption { font-size: 11px; color: var(--text-faint); margin-top: 6px; }
-  .stat { font-size: 21px; font-weight: 600; color: var(--text); font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-  .source-tag { display: block; font-size: 10.5px; color: var(--text-faint); font-family: var(--font-mono); margin-top: 6px; }
+  .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .card-head .icon-dot {
+    width: 24px; height: 24px; border-radius: 999px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-2); color: var(--text-muted); flex-shrink: 0;
+  }
+  .card h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); margin: 0; font-weight: 700; }
+  .card .subcaption { font-size: 11px; color: var(--text-faint); margin-top: 8px; }
+  .stat { font-size: 21px; font-weight: 700; color: var(--text); font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .source-tag { display: block; font-size: 10.5px; color: var(--text-faint); font-family: var(--font-mono); margin-top: 8px; }
 
-  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-weight: 600; font-size: 12.5px; border: 1px solid transparent; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-weight: 700; font-size: 12.5px; border: 1px solid transparent; }
   .badge-verified { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
   .badge-verifying { background: var(--yellow-bg); color: var(--yellow); border-color: var(--yellow-border); }
   .badge-unverified { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
   .badge-unknown { background: var(--indigo-bg); color: var(--indigo); border-color: var(--indigo-border); }
 
-  .action-badge { display: inline-flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 600; }
+  .action-badge { display: inline-flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 700; }
   .action-none { color: var(--text-muted); }
   .action-top-up { color: var(--accent); }
   .action-drop-dataset { color: var(--red); }
   .action-hold-and-monitor { color: var(--yellow); }
 
-  .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 32px 0 14px; }
+  /* ---- Decision Trace, styled as a "recent activity" list card ---- */
+  .trace-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; }
+  .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
   .section-title-left { display: flex; align-items: baseline; gap: 10px; }
-  .section-title h2 { font-size: 13.5px; font-weight: 650; color: var(--text); margin: 0; }
+  .section-title h2 { font-size: 13.5px; font-weight: 700; color: var(--text); margin: 0; text-transform: none; letter-spacing: 0; }
   .section-title p { font-size: 11.5px; color: var(--text-faint); margin: 0; font-family: var(--font-mono); }
   .section-title .count { font-size: 11px; color: var(--text-faint); }
 
-  #log {
-    display: flex;
-    flex-direction: column-reverse;
-    gap: 8px;
-    border-radius: 10px;
-  }
+  #log { display: flex; flex-direction: column-reverse; gap: 0; }
   .log-entry {
-    border: 1px solid var(--border);
-    border-left-width: 3px;
-    padding: 12px 15px;
-    background: var(--surface);
-    border-radius: 8px;
+    padding: 14px 4px;
+    border-bottom: 1px solid var(--border);
     animation: slideIn 0.4s cubic-bezier(0.22,1,0.36,1);
-    transition: border-color 0.15s ease;
   }
-  .log-entry:hover { border-color: var(--border-strong); }
+  #log > .log-entry:first-child { border-bottom: none; }
   @media (prefers-reduced-motion: reduce) { .log-entry { animation: none; } .live-dot { animation: none; } .gauge-fill { transition: none; } .spin { animation: none; } }
   @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-  .log-entry.band-green { border-left-color: var(--green); }
-  .log-entry.band-yellow { border-left-color: var(--yellow); }
-  .log-entry.band-red { border-left-color: var(--red); }
-  .log-entry.band-insufficient-data { border-left-color: var(--indigo); }
+  .log-dot { width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0; }
+  .log-entry.band-green .log-dot { background: var(--green); }
+  .log-entry.band-yellow .log-dot { background: var(--yellow); }
+  .log-entry.band-red .log-dot { background: var(--red); }
+  .log-entry.band-insufficient-data .log-dot { background: var(--indigo); }
   .log-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-faint); margin-bottom: 7px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
   .log-meta .badge { padding: 2px 8px; font-size: 10.5px; }
   .log-meta .txref { color: var(--text-faint); margin-left: auto; }
-  .log-reason { font-size: 13.5px; line-height: 1.55; color: var(--text); margin-bottom: 8px; }
+  .log-reason { font-size: 13.5px; line-height: 1.55; color: var(--text); margin: 0 0 8px 16px; }
   .log-executed {
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: center; gap: 8px; margin-left: 16px;
     font-size: 12px; color: var(--text-muted);
     background: var(--surface-2); border: 1px solid var(--border);
-    border-radius: 6px; padding: 7px 10px; font-family: var(--font-mono);
+    border-radius: 8px; padding: 7px 10px; font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
   .log-executed .tx { color: var(--accent); }
-  #empty { color: var(--text-faint); font-style: italic; padding: 20px; text-align: center; }
+  #empty { color: var(--text-faint); font-style: italic; padding: 24px 4px; text-align: center; }
 
-  footer { margin-top: 36px; text-align: center; font-size: 11.5px; color: var(--text-faint); }
+  footer { margin-top: 24px; text-align: center; font-size: 11.5px; color: var(--text-faint); }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="title-block">
-      <p class="eyebrow">Filecoin Pay &middot; Runway Triage</p>
-      <h1>Tiered Runway Triage Agent</h1>
-      <p>Autonomous Filecoin storage-budget decisions &mdash; runway &times; PDP proof status</p>
+<div class="shell">
+  <div class="topnav">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Filecoin Triage</span>
     </div>
     <div class="status-row">
-      <div class="live-pill"><span class="live-dot"></span> Live</div>
-      <div class="pdp-pill"><span id="pdpPillIcon" class="icon-sm"></span><span>PDP: Proof of Data Possession</span></div>
+      <div class="pill"><span class="live-dot"></span> Live</div>
+      <div class="pill pdp-pill"><span id="pdpPillIcon" class="icon-sm"></span><span>PDP: Proof of Data Possession</span></div>
     </div>
-  </header>
+  </div>
 
   <div class="verify-strip">
     <span id="verifyIcon" class="icon-sm"></span>
     <span>This decision engine is live-verified against real <strong>Filecoin Pay</strong> and <strong>PDP</strong> transactions on Filecoin calibration testnet.</span>
+  </div>
+
+  <div class="hero">
+    <div>
+      <p class="eyebrow">Filecoin Pay &middot; Runway Triage</p>
+      <h1>Tiered Runway Triage Agent</h1>
+      <p class="hero-sub">Autonomous Filecoin storage-budget decisions &mdash; runway &times; PDP proof status.</p>
+    </div>
+    <div id="bandCard" class="band-insufficient-data hero-stat">
+      <div class="hero-stat-label">Runway &middot; % of baseline</div>
+      <div class="hero-number-row">
+        <span id="gaugePercentLabel">&mdash;</span>
+        <span class="band-pill"><span class="band-icon icon-sm" id="bandIcon"></span><span id="bandLabel">Waiting</span></span>
+      </div>
+      <span id="bandSub"></span>
+    </div>
+  </div>
+
+  <div class="gauge-track" style="margin-bottom: 26px;">
+    <div class="gauge-tick" style="left: 30%"></div>
+    <div class="gauge-tick" style="left: 70%"></div>
+    <div class="gauge-fill" id="gaugeFill" style="width: 0%"></div>
   </div>
 
   <div class="controls">
@@ -287,55 +326,39 @@ export const DASHBOARD_HTML = `<!doctype html>
     </div>
   </div>
 
-  <div id="bandCard" class="band-insufficient-data">
-    <div class="band-top">
-      <span class="band-icon icon" id="bandIcon"></span>
-      <span id="bandLabel">Waiting for data&hellip;</span>
-      <span id="bandSub"></span>
-    </div>
-    <div class="gauge-track">
-      <div class="gauge-tick" style="left: 30%"></div>
-      <div class="gauge-tick" style="left: 70%"></div>
-      <div class="gauge-fill" id="gaugeFill" style="width: 0%"></div>
-    </div>
-    <div class="gauge-labels">
-      <span>0%</span>
-      <span class="gauge-percent" id="gaugePercentLabel">&mdash;</span>
-      <span>100%</span>
-    </div>
-  </div>
-
   <div class="grid">
     <div class="card">
-      <h2>Filecoin Pay Runway (days)</h2>
+      <div class="card-head"><span class="icon-dot">$</span><h2>Filecoin Pay Runway (days)</h2></div>
       <div class="stat" id="estimatedDaysRemaining">&mdash;</div>
       <span class="source-tag">via Filecoin Pay</span>
     </div>
     <div class="card">
-      <h2>Est. Epochs Remaining</h2>
+      <div class="card-head"><span class="icon-dot">#</span><h2>Est. Epochs Remaining</h2></div>
       <div class="stat" id="estimatedEpochsRemaining">&mdash;</div>
       <span class="source-tag">via Filecoin Pay</span>
     </div>
     <div class="card">
-      <h2>PDP Proof Status &middot; Filecoin Calibration</h2>
+      <div class="card-head"><span class="icon-dot">&#10003;</span><h2>PDP Proof Status</h2></div>
       <div><span id="pdpStatus" class="badge badge-unknown"></span></div>
       <div class="subcaption">Verified via on-chain Proof of Data Possession</div>
     </div>
     <div class="card">
-      <h2>Current Action</h2>
+      <div class="card-head"><span class="icon-dot">&rarr;</span><h2>Current Action</h2></div>
       <div class="action-badge action-none" id="actionBadge"><span>&mdash;</span></div>
       <span class="source-tag">via PDP attestation</span>
     </div>
   </div>
 
-  <div class="section-title">
-    <div class="section-title-left">
-      <h2>Decision Trace</h2>
-      <p>band &rarr; forecast &rarr; PDP status &rarr; action &rarr; reason</p>
+  <div class="trace-card">
+    <div class="section-title">
+      <div class="section-title-left">
+        <h2>Decision Trace</h2>
+        <p>band &rarr; forecast &rarr; PDP status &rarr; action &rarr; reason</p>
+      </div>
+      <span class="count" id="logCount"></span>
     </div>
-    <span class="count" id="logCount"></span>
+    <div id="log" aria-live="polite"><div id="empty">No decisions yet &mdash; click a scenario above to begin.</div></div>
   </div>
-  <div id="log" aria-live="polite"><div id="empty">No decisions yet &mdash; click a scenario above to begin.</div></div>
 
   <footer>FilecoinTLDR Builder Challenge &middot; Cycle 4</footer>
 </div>
@@ -381,15 +404,16 @@ export const DASHBOARD_HTML = `<!doctype html>
   function renderCurrent(state) {
     var bandCard = document.getElementById('bandCard');
     var band = state.band || null;
-    bandCard.className = bandClass(band);
+    bandCard.className = bandClass(band) + ' hero-stat';
     document.getElementById('bandIcon').innerHTML = BAND_ICON[band] || ICONS.help;
     document.getElementById('bandLabel').innerHTML = band ? (band.replace(/-/g, ' ')) : 'Waiting for data…';
     document.getElementById('bandSub').innerHTML = band ? BAND_TEXT[band] : '';
 
     var pct = state.details && typeof state.details.percentOfBaseline === 'number' ? state.details.percentOfBaseline : null;
     var gaugeFill = document.getElementById('gaugeFill');
+    gaugeFill.className = 'gauge-fill ' + bandClass(band);
     gaugeFill.style.width = (pct !== null ? Math.max(0, Math.min(100, pct)) : 0) + '%';
-    document.getElementById('gaugePercentLabel').textContent = pct !== null ? pct.toFixed(1) + '% of baseline' : '—';
+    document.getElementById('gaugePercentLabel').textContent = pct !== null ? pct.toFixed(1) + '%' : '—';
 
     document.getElementById('estimatedDaysRemaining').textContent =
       state.details && state.details.estimatedDaysRemaining !== null && state.details.estimatedDaysRemaining !== undefined
@@ -441,7 +465,7 @@ export const DASHBOARD_HTML = `<!doctype html>
       var div = document.createElement('div');
       div.className = 'log-entry ' + bandClass(evt.band);
       div.innerHTML =
-        '<div class="log-meta">' + ICONS.clock +
+        '<div class="log-meta"><span class="log-dot"></span>' + ICONS.clock +
         ' #' + evt.seq + ' &middot; ' + escapeHtml(new Date(evt.timestamp).toLocaleTimeString()) +
         ' <span class="badge badge-' + (evt.band === 'red' ? 'unverified' : evt.band === 'green' ? 'verified' : evt.band === 'yellow' ? 'verifying' : 'unknown') + '">' + escapeHtml(evt.band) + '</span>' +
         '<span class="txref">' + txRef(evt) + '</span></div>' +
