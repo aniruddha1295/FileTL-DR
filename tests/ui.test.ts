@@ -68,7 +68,7 @@ describe('dashboard server', () => {
     const pageRes = await fetch(handle.url + '/');
     expect(pageRes.status).toBe(200);
     const pageHtml = await pageRes.text();
-    expect(pageHtml).toContain('id="band"');
+    expect(pageHtml).toContain('id="bandCard"');
     expect(pageHtml).toContain('Filecoin Runway Triage');
 
     // /state reflects the pushed decision trace: band, action, reason all present.

@@ -38,6 +38,6 @@ describe('runLiveDemo (dashboard + drain scenario integration)', () => {
 
     const pageRes = await fetch(url);
     const html = await pageRes.text();
-    expect(html).toContain('id="band"');
+    expect(html).toContain('id="bandCard"');
   });
 });
