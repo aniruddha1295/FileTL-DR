@@ -180,7 +180,7 @@ export const DASHBOARD_HTML = `<!doctype html>
     padding: 10px 16px; border-radius: 999px; cursor: pointer;
     background: var(--surface-2); color: var(--text); border: 1px solid var(--border-strong);
     transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
-    min-height: 40px;
+    min-height: 44px;
   }
   .btn:hover:not(:disabled) { background: #262632; border-color: var(--accent-border); }
   .btn:active:not(:disabled) { transform: scale(0.97); }
@@ -328,22 +328,22 @@ export const DASHBOARD_HTML = `<!doctype html>
 
   <div class="grid">
     <div class="card">
-      <div class="card-head"><span class="icon-dot">$</span><h2>Filecoin Pay Runway (days)</h2></div>
+      <div class="card-head"><span class="icon-dot" aria-hidden="true">$</span><h2>Filecoin Pay Runway (days)</h2></div>
       <div class="stat" id="estimatedDaysRemaining">&mdash;</div>
       <span class="source-tag">via Filecoin Pay</span>
     </div>
     <div class="card">
-      <div class="card-head"><span class="icon-dot">#</span><h2>Est. Epochs Remaining</h2></div>
+      <div class="card-head"><span class="icon-dot" aria-hidden="true">#</span><h2>Est. Epochs Remaining</h2></div>
       <div class="stat" id="estimatedEpochsRemaining">&mdash;</div>
       <span class="source-tag">via Filecoin Pay</span>
     </div>
     <div class="card">
-      <div class="card-head"><span class="icon-dot">&#10003;</span><h2>PDP Proof Status</h2></div>
+      <div class="card-head"><span class="icon-dot" aria-hidden="true">&#10003;</span><h2>PDP Proof Status</h2></div>
       <div><span id="pdpStatus" class="badge badge-unknown"></span></div>
       <div class="subcaption">Verified via on-chain Proof of Data Possession</div>
     </div>
     <div class="card">
-      <div class="card-head"><span class="icon-dot">&rarr;</span><h2>Current Action</h2></div>
+      <div class="card-head"><span class="icon-dot" aria-hidden="true">&rarr;</span><h2>Current Action</h2></div>
       <div class="action-badge action-none" id="actionBadge"><span>&mdash;</span></div>
       <span class="source-tag">via PDP attestation</span>
     </div>
