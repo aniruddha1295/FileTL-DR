@@ -18,6 +18,14 @@
  * src/demo/run-live-demo.ts), each running the REAL decision engine on
  * demand — this is what turns the page from a passive recording into
  * something a presenter actually operates live.
+ *
+ * Visual design: "Institutional Fintech" — a near-neutral charcoal theme
+ * (never pure black/white), a single muted slate-blue accent, and
+ * desaturated sage/ochre/dusty-rose standing in for green/yellow/red so
+ * status reads as information rather than a warning light. Hierarchy comes
+ * from type weight/size/space, not color blocks. Filecoin Pay and PDP are
+ * named explicitly (wordmark, badges, renamed cards, persistent verification
+ * strip) so the on-chain anchor is unmistakable, not just visually implied.
  */
 export const DASHBOARD_HTML = `<!doctype html>
 <html lang="en">
@@ -28,29 +36,29 @@ export const DASHBOARD_HTML = `<!doctype html>
 <style>
   :root {
     color-scheme: dark;
-    --bg: #090a0f;
-    --surface: #10121a;
-    --surface-2: #161923;
-    --border: rgba(255,255,255,0.06);
-    --border-strong: rgba(255,255,255,0.12);
-    --text: #e7e8ee;
-    --text-muted: #8d90a3;
-    --text-faint: #565a6c;
-    --accent: #7c9aff;
-    --accent-bg: rgba(124,154,255,0.10);
-    --accent-border: rgba(124,154,255,0.30);
-    --green: #6fbf95;
-    --green-bg: rgba(111,191,149,0.08);
-    --green-border: rgba(111,191,149,0.28);
-    --yellow: #d3a15c;
-    --yellow-bg: rgba(211,161,92,0.08);
-    --yellow-border: rgba(211,161,92,0.28);
-    --red: #d97f7d;
-    --red-bg: rgba(217,127,125,0.08);
-    --red-border: rgba(217,127,125,0.28);
-    --indigo: #9198c4;
-    --indigo-bg: rgba(145,152,196,0.08);
-    --indigo-border: rgba(145,152,196,0.28);
+    --bg: #0f1115;
+    --surface: #15181e;
+    --surface-2: #1a1e26;
+    --border: rgba(255,255,255,0.07);
+    --border-strong: rgba(255,255,255,0.14);
+    --text: #e4e6eb;
+    --text-muted: #9297a3;
+    --text-faint: #5c6270;
+    --accent: #5b7fa6;
+    --accent-bg: rgba(91,127,166,0.12);
+    --accent-border: rgba(91,127,166,0.35);
+    --green: #7a9e8a;
+    --green-bg: rgba(122,158,138,0.10);
+    --green-border: rgba(122,158,138,0.30);
+    --yellow: #b9a26e;
+    --yellow-bg: rgba(185,162,110,0.10);
+    --yellow-border: rgba(185,162,110,0.30);
+    --red: #b17878;
+    --red-bg: rgba(177,120,120,0.10);
+    --red-border: rgba(177,120,120,0.30);
+    --indigo: #8890a0;
+    --indigo-bg: rgba(136,144,160,0.10);
+    --indigo-border: rgba(136,144,160,0.30);
     --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     --font-mono: ui-monospace, 'SFMono-Regular', 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
   }
@@ -60,14 +68,17 @@ export const DASHBOARD_HTML = `<!doctype html>
     font-family: var(--font-sans);
     background: var(--bg);
     color: var(--text);
-    padding: 32px clamp(16px, 4vw, 48px) 48px;
+    padding: 36px clamp(16px, 4vw, 48px) 56px;
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 1080px; margin: 0 auto; }
+  .wrap { max-width: 1120px; margin: 0 auto; }
 
-  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
-  .title-block h1 { font-size: 18px; font-weight: 700; margin: 0 0 4px; color: #fff; letter-spacing: -0.01em; }
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .title-block .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 6px; }
+  .title-block h1 { font-size: 20px; font-weight: 650; margin: 0 0 4px; color: var(--text); letter-spacing: -0.01em; }
   .title-block p { margin: 0; font-size: 13px; color: var(--text-muted); }
+
+  .status-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .live-pill {
     display: inline-flex; align-items: center; gap: 7px;
     padding: 6px 12px; border-radius: 999px;
@@ -75,22 +86,44 @@ export const DASHBOARD_HTML = `<!doctype html>
     font-size: 11.5px; font-weight: 600; color: var(--text-muted);
     letter-spacing: 0.05em; text-transform: uppercase;
   }
-  .live-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--green); box-shadow: 0 0 0 0 rgba(111,191,149,0.5); animation: pulse 2s infinite; flex-shrink: 0; }
+  .live-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--green); box-shadow: 0 0 0 0 rgba(122,158,138,0.5); animation: pulse 2s infinite; flex-shrink: 0; }
   @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(111,191,149,0.45); }
-    70% { box-shadow: 0 0 0 6px rgba(111,191,149,0); }
-    100% { box-shadow: 0 0 0 0 rgba(111,191,149,0); }
+    0% { box-shadow: 0 0 0 0 rgba(122,158,138,0.45); }
+    70% { box-shadow: 0 0 0 6px rgba(122,158,138,0); }
+    100% { box-shadow: 0 0 0 0 rgba(122,158,138,0); }
   }
+  .pdp-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 12px; border-radius: 999px;
+    background: var(--accent-bg); border: 1px solid var(--accent-border);
+    font-size: 11.5px; font-weight: 600; color: var(--text);
+    letter-spacing: 0.02em;
+    position: sticky; top: 8px; z-index: 5;
+  }
+  .pdp-pill .icon-sm { color: var(--accent); }
 
   .icon { width: 19px; height: 19px; flex-shrink: 0; }
   .icon-sm { width: 14px; height: 14px; flex-shrink: 0; }
 
+  /* Persistent verification strip: infrastructure/status-bar, not a banner */
+  .verify-strip {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface-2);
+    border-top: 1px solid var(--border-strong);
+    border-bottom: 1px solid var(--border-strong);
+    padding: 11px 16px;
+    margin: 20px 0;
+    font-size: 12.5px; line-height: 1.5; color: var(--text-muted);
+  }
+  .verify-strip .icon-sm { color: var(--text-faint); flex-shrink: 0; }
+  .verify-strip strong { font-weight: 600; color: var(--text); }
+
   /* Interactive controls */
   .controls {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;
+    border-radius: 10px; padding: 16px 18px; margin-bottom: 0;
   }
-  .controls-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); font-weight: 600; margin-bottom: 10px; }
+  .controls-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); font-weight: 600; margin-bottom: 12px; }
   .controls-row { display: flex; flex-wrap: wrap; gap: 8px; }
   .btn {
     display: inline-flex; align-items: center; gap: 7px;
@@ -100,7 +133,7 @@ export const DASHBOARD_HTML = `<!doctype html>
     transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
     min-height: 38px;
   }
-  .btn:hover:not(:disabled) { background: #1b1f2c; border-color: var(--accent-border); }
+  .btn:hover:not(:disabled) { background: #21252e; border-color: var(--accent-border); }
   .btn:active:not(:disabled) { transform: scale(0.97); }
   .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -114,9 +147,10 @@ export const DASHBOARD_HTML = `<!doctype html>
   @media (max-width: 640px) { .btn-auto { margin-left: 0; } }
 
   #bandCard {
-    border-radius: 14px;
-    padding: 20px 24px;
-    margin-bottom: 18px;
+    border-radius: 10px;
+    padding: 22px 26px;
+    margin-top: 20px;
+    margin-bottom: 32px;
     border: 1px solid var(--border-strong);
     background: var(--surface);
     transition: background-color 0.35s ease, border-color 0.35s ease;
@@ -126,52 +160,54 @@ export const DASHBOARD_HTML = `<!doctype html>
   #bandCard.band-red { background: var(--red-bg); border-color: var(--red-border); }
   #bandCard.band-insufficient-data { background: var(--indigo-bg); border-color: var(--indigo-border); }
 
-  .band-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-  .band-top .icon { width: 24px; height: 24px; }
-  #bandLabel { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; text-transform: uppercase; }
+  .band-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .band-top .icon { width: 22px; height: 22px; }
+  #bandLabel { font-size: 19px; font-weight: 650; letter-spacing: -0.01em; text-transform: uppercase; }
   .band-green #bandLabel, .band-green .band-icon { color: var(--green); }
   .band-yellow #bandLabel, .band-yellow .band-icon { color: var(--yellow); }
   .band-red #bandLabel, .band-red .band-icon { color: var(--red); }
   .band-insufficient-data #bandLabel, .band-insufficient-data .band-icon { color: var(--indigo); }
   #bandSub { font-size: 13px; color: var(--text-muted); margin-left: 4px; }
 
-  .gauge-track { position: relative; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.05); overflow: visible; margin-bottom: 8px; }
-  .gauge-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 999px; transition: width 0.6s cubic-bezier(0.22,1,0.36,1), background-color 0.35s ease; }
+  .gauge-track { position: relative; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06); overflow: visible; margin-bottom: 8px; }
+  .gauge-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.22,1,0.36,1), background-color 0.35s ease; }
   .band-green .gauge-fill { background: var(--green); }
   .band-yellow .gauge-fill { background: var(--yellow); }
   .band-red .gauge-fill { background: var(--red); }
   .band-insufficient-data .gauge-fill { background: var(--indigo); }
-  .gauge-tick { position: absolute; top: -2px; width: 1px; height: 12px; background: rgba(255,255,255,0.18); }
-  .gauge-labels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-faint); font-family: var(--font-mono); }
+  .gauge-tick { position: absolute; top: -3px; width: 1px; height: 12px; background: var(--text-faint); }
+  .gauge-labels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-faint); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
   .gauge-percent { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-muted); }
 
-  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
   @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px;
+    border-radius: 8px;
+    padding: 18px 20px;
   }
   .card h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); margin: 0 0 8px; font-weight: 600; }
-  .stat { font-size: 19px; font-weight: 700; color: #fff; font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .card .subcaption { font-size: 11px; color: var(--text-faint); margin-top: 6px; }
+  .stat { font-size: 21px; font-weight: 600; color: var(--text); font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .source-tag { display: block; font-size: 10.5px; color: var(--text-faint); font-family: var(--font-mono); margin-top: 6px; }
 
-  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-weight: 700; font-size: 12.5px; border: 1px solid transparent; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-weight: 600; font-size: 12.5px; border: 1px solid transparent; }
   .badge-verified { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
   .badge-verifying { background: var(--yellow-bg); color: var(--yellow); border-color: var(--yellow-border); }
   .badge-unverified { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
   .badge-unknown { background: var(--indigo-bg); color: var(--indigo); border-color: var(--indigo-border); }
 
-  .action-badge { display: inline-flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 700; }
+  .action-badge { display: inline-flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 600; }
   .action-none { color: var(--text-muted); }
   .action-top-up { color: var(--accent); }
   .action-drop-dataset { color: var(--red); }
   .action-hold-and-monitor { color: var(--yellow); }
 
-  .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 24px 0 12px; }
+  .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 32px 0 14px; }
   .section-title-left { display: flex; align-items: baseline; gap: 10px; }
-  .section-title h2 { font-size: 13.5px; font-weight: 700; color: #fff; margin: 0; }
+  .section-title h2 { font-size: 13.5px; font-weight: 650; color: var(--text); margin: 0; }
   .section-title p { font-size: 11.5px; color: var(--text-faint); margin: 0; font-family: var(--font-mono); }
   .section-title .count { font-size: 11px; color: var(--text-faint); }
 
@@ -179,7 +215,7 @@ export const DASHBOARD_HTML = `<!doctype html>
     display: flex;
     flex-direction: column-reverse;
     gap: 8px;
-    border-radius: 12px;
+    border-radius: 10px;
   }
   .log-entry {
     border: 1px solid var(--border);
@@ -197,30 +233,41 @@ export const DASHBOARD_HTML = `<!doctype html>
   .log-entry.band-yellow { border-left-color: var(--yellow); }
   .log-entry.band-red { border-left-color: var(--red); }
   .log-entry.band-insufficient-data { border-left-color: var(--indigo); }
-  .log-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-faint); margin-bottom: 7px; font-family: var(--font-mono); }
+  .log-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-faint); margin-bottom: 7px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
   .log-meta .badge { padding: 2px 8px; font-size: 10.5px; }
+  .log-meta .txref { color: var(--text-faint); margin-left: auto; }
   .log-reason { font-size: 13.5px; line-height: 1.55; color: var(--text); margin-bottom: 8px; }
   .log-executed {
     display: flex; align-items: center; gap: 8px;
     font-size: 12px; color: var(--text-muted);
     background: var(--surface-2); border: 1px solid var(--border);
     border-radius: 6px; padding: 7px 10px; font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
   }
   .log-executed .tx { color: var(--accent); }
   #empty { color: var(--text-faint); font-style: italic; padding: 20px; text-align: center; }
 
-  footer { margin-top: 28px; text-align: center; font-size: 11.5px; color: var(--text-faint); }
+  footer { margin-top: 36px; text-align: center; font-size: 11.5px; color: var(--text-faint); }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="title-block">
+      <p class="eyebrow">Filecoin Pay &middot; Runway Triage</p>
       <h1>Tiered Runway Triage Agent</h1>
       <p>Autonomous Filecoin storage-budget decisions &mdash; runway &times; PDP proof status</p>
     </div>
-    <div class="live-pill"><span class="live-dot"></span> Live</div>
+    <div class="status-row">
+      <div class="live-pill"><span class="live-dot"></span> Live</div>
+      <div class="pdp-pill"><span id="pdpPillIcon" class="icon-sm"></span><span>PDP: Proof of Data Possession</span></div>
+    </div>
   </header>
+
+  <div class="verify-strip">
+    <span id="verifyIcon" class="icon-sm"></span>
+    <span>This decision engine is live-verified against real <strong>Filecoin Pay</strong> and <strong>PDP</strong> transactions on Filecoin calibration testnet.</span>
+  </div>
 
   <div class="controls">
     <div class="controls-label">Simulate a scenario &mdash; runs the real decision engine on demand</div>
@@ -260,20 +307,24 @@ export const DASHBOARD_HTML = `<!doctype html>
 
   <div class="grid">
     <div class="card">
-      <h2>Est. Days Remaining</h2>
+      <h2>Filecoin Pay Runway (days)</h2>
       <div class="stat" id="estimatedDaysRemaining">&mdash;</div>
+      <span class="source-tag">via Filecoin Pay</span>
     </div>
     <div class="card">
       <h2>Est. Epochs Remaining</h2>
       <div class="stat" id="estimatedEpochsRemaining">&mdash;</div>
+      <span class="source-tag">via Filecoin Pay</span>
     </div>
     <div class="card">
-      <h2>PDP Proof Status</h2>
+      <h2>PDP Proof Status &middot; Filecoin Calibration</h2>
       <div><span id="pdpStatus" class="badge badge-unknown"></span></div>
+      <div class="subcaption">Verified via on-chain Proof of Data Possession</div>
     </div>
     <div class="card">
       <h2>Current Action</h2>
       <div class="action-badge action-none" id="actionBadge"><span>&mdash;</span></div>
+      <span class="source-tag">via PDP attestation</span>
     </div>
   </div>
 
@@ -286,7 +337,7 @@ export const DASHBOARD_HTML = `<!doctype html>
   </div>
   <div id="log" aria-live="polite"><div id="empty">No decisions yet &mdash; click a scenario above to begin.</div></div>
 
-  <footer>Tiered Runway Triage Agent &middot; FilecoinTLDR Builder Challenge Cycle 4</footer>
+  <footer>FilecoinTLDR Builder Challenge &middot; Cycle 4</footer>
 </div>
 
 <script>
@@ -304,7 +355,8 @@ export const DASHBOARD_HTML = `<!doctype html>
     trash: '<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0l-.8 12.1a2 2 0 01-2 1.9H8.8a2 2 0 01-2-1.9L6 7"/></svg>',
     pause: '<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg>',
     play: '<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8l6 4-6 4V8z" fill="currentColor" stroke="none"/></svg>',
-    spinner: '<svg class="icon-sm spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a9 9 0 019 9"/></svg>'
+    spinner: '<svg class="icon-sm spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a9 9 0 019 9"/></svg>',
+    checkSeal: '<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 1.6 2.8-.3 1.1 2.6 2.6 1.1-.3 2.8L22 12l-1.4 2.2.3 2.8-2.6 1.1-1.1 2.6-2.8-.3L12 22l-2.4-1.6-2.8.3-1.1-2.6-2.6-1.1.3-2.8L2 12l1.4-2.2-.3-2.8 2.6-1.1 1.1-2.6 2.8.3z"/><path d="M8.5 12.2l2.3 2.3 4.7-4.9"/></svg>'
   };
 
   var BUTTON_ICON = { healthy: ICONS.check, 'tight-verified': ICONS.alert, 'tight-unverified': ICONS.trash, auto: ICONS.play };
@@ -313,6 +365,9 @@ export const DASHBOARD_HTML = `<!doctype html>
   var PDP_ICON = { verified: ICONS.check, verifying: ICONS.clock, unverified: ICONS.x };
   var ACTION_ICON = { none: ICONS.minus, 'top-up': ICONS.arrowUp, 'drop-dataset': ICONS.trash, 'hold-and-monitor': ICONS.pause };
   var ACTION_TEXT = { none: 'Monitoring', 'top-up': 'Top-up proposed', 'drop-dataset': 'Dataset dropped', 'hold-and-monitor': 'Holding, re-checking' };
+
+  document.getElementById('verifyIcon').innerHTML = ICONS.checkSeal;
+  document.getElementById('pdpPillIcon').innerHTML = ICONS.checkSeal;
 
   // Set the static button icons once on load.
   Array.prototype.forEach.call(document.querySelectorAll('.btn'), function (btn) {
@@ -363,6 +418,15 @@ export const DASHBOARD_HTML = `<!doctype html>
     return ICONS.minus + '<span>No on-chain action taken</span>';
   }
 
+  function txRef(evt) {
+    var tx = evt.executed && evt.executed.txHash ? String(evt.executed.txHash) : null;
+    if (tx) {
+      var short = tx.length > 10 ? (tx.slice(0, 6) + '…' + tx.slice(-4)) : tx;
+      return escapeHtml(short);
+    }
+    return '#' + escapeHtml(String(evt.seq));
+  }
+
   function renderLog(events) {
     var logEl = document.getElementById('log');
     var countEl = document.getElementById('logCount');
@@ -379,7 +443,8 @@ export const DASHBOARD_HTML = `<!doctype html>
       div.innerHTML =
         '<div class="log-meta">' + ICONS.clock +
         ' #' + evt.seq + ' &middot; ' + escapeHtml(new Date(evt.timestamp).toLocaleTimeString()) +
-        ' <span class="badge badge-' + (evt.band === 'red' ? 'unverified' : evt.band === 'green' ? 'verified' : evt.band === 'yellow' ? 'verifying' : 'unknown') + '">' + escapeHtml(evt.band) + '</span></div>' +
+        ' <span class="badge badge-' + (evt.band === 'red' ? 'unverified' : evt.band === 'green' ? 'verified' : evt.band === 'yellow' ? 'verifying' : 'unknown') + '">' + escapeHtml(evt.band) + '</span>' +
+        '<span class="txref">' + txRef(evt) + '</span></div>' +
         '<div class="log-reason">' + escapeHtml(evt.reason) + '</div>' +
         '<div class="log-executed">' + fmtExecuted(evt.executed) + '</div>';
       logEl.appendChild(div);
