@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { runLiveDemo } from '../src/demo/run-live-demo.js';
+import { runLiveDemo, DEMO_WALLET_ADDRESS } from '../src/demo/run-live-demo.js';
 import type { ActionExecutor } from '../src/onchain/actions.js';
 
 describe('runLiveDemo (dashboard + drain scenario integration)', () => {
@@ -39,5 +39,24 @@ describe('runLiveDemo (dashboard + drain scenario integration)', () => {
     const pageRes = await fetch(url);
     const html = await pageRes.text();
     expect(html).toContain('id="bandCard"');
+  });
+
+  it('sets the real wallet address and an honest scripted-demo mode in /state.meta at startup', async () => {
+    const executor: ActionExecutor = {
+      payments: { deposit: async () => '0xTOPUP' as `0x${string}` },
+      storage: {
+        terminateService: async (opts) => ({
+          txHash: '0xDROP' as `0x${string}`,
+          dataSetId: opts.dataSetId,
+          endEpoch: 9999n,
+        }),
+      },
+    };
+
+    const { url, stop } = await runLiveDemo(executor, { port: 0, stepDelayMs: 0 });
+    stopFn = stop;
+
+    const state = await (await fetch(`${url}/state`)).json();
+    expect(state.meta).toEqual({ walletAddress: DEMO_WALLET_ADDRESS, mode: 'scripted-demo' });
   });
 });

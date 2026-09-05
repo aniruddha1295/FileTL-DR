@@ -22,15 +22,34 @@ export interface DecisionLogEntry {
   executed?: ExecutedAction;
 }
 
-/** JSON shape served at GET /state. `current` is the most recent entry (or null before the first push); `events` is the full running log, oldest first. */
+/**
+ * Static, non-decision metadata about this dashboard instance: the wallet
+ * address to link to on the block explorer, and an honest label for how
+ * this entry point is actually running. `mode` is a real threaded field
+ * (not a hardcoded string duplicated across the codebase) so a future entry
+ * point could set it to 'live-testnet' — but this dashboard (run-live-demo.ts)
+ * always runs against synthetic/scripted data via a console-logging
+ * executor, never a real wallet, so it must always set 'scripted-demo' here.
+ */
+export interface DashboardMeta {
+  walletAddress: string | null;
+  mode: 'scripted-demo' | 'live-testnet';
+}
+
+const DEFAULT_META: DashboardMeta = { walletAddress: null, mode: 'scripted-demo' };
+
+/** JSON shape served at GET /state. `current` is the most recent entry (or null before the first push); `events` is the full running log, oldest first; `meta` is always present (static info, independent of whether any decision has been pushed yet). */
 export interface DashboardState {
   current: DecisionLogEntry | null;
   events: DecisionLogEntry[];
+  meta: DashboardMeta;
 }
 
 export interface DashboardServer {
   /** Feed a new decision (and, once available, its executed action result) into the running dashboard. Appends to the log and becomes the new `current` state. */
   pushDecision(trace: DecisionTrace, executed?: ExecutedAction): void;
+  /** Sets the static wallet-address/mode metadata surfaced via /state's `meta` field. Call once at startup; overwrites any previous value. */
+  setMeta(meta: DashboardMeta): void;
   /**
    * Registers the handler invoked when a client POSTs `/simulate/:name`
    * (the dashboard's interactive scenario buttons). The handler is
@@ -63,9 +82,14 @@ export function createDashboardServer(): DashboardServer {
   let seq = 0;
   let server: Server | null = null;
   let simulateHandler: ((name: string) => Promise<void>) | null = null;
+  let meta: DashboardMeta = { ...DEFAULT_META };
 
   function onSimulate(handler: (name: string) => Promise<void>): void {
     simulateHandler = handler;
+  }
+
+  function setMeta(next: DashboardMeta): void {
+    meta = next;
   }
 
   function pushDecision(trace: DecisionTrace, executed?: ExecutedAction): void {
@@ -86,6 +110,7 @@ export function createDashboardServer(): DashboardServer {
     return {
       current: events.length > 0 ? events[events.length - 1] : null,
       events,
+      meta,
     };
   }
 
@@ -152,5 +177,5 @@ export function createDashboardServer(): DashboardServer {
     });
   }
 
-  return { pushDecision, onSimulate, start };
+  return { pushDecision, setMeta, onSimulate, start };
 }

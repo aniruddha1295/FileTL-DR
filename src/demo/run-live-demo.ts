@@ -12,6 +12,17 @@ function isScenarioName(name: string): name is ScenarioName {
 }
 
 /**
+ * The project's actual live-verified testnet wallet (see README.md and
+ * docs/BUILD-PLAN.md) — used only as a static "Verify on-chain" link target
+ * in the dashboard header. This entry point never sends transactions from
+ * or reads live balances for this address; it always runs the scripted
+ * drain sequence / named scenarios against a console-logging executor (see
+ * `mode: 'scripted-demo'` below, which is the honest, only value this entry
+ * point ever sets).
+ */
+export const DEMO_WALLET_ADDRESS = '0x044c40FBC017C74273eF402655391D4372Cf715e';
+
+/**
  * Wires the Phase 4 dashboard (src/ui/server.ts) and the deterministic drain
  * scenario (src/demo/drain-scenario.ts) together — these were built as
  * independent parallel tracks and never imported each other, so this is the
@@ -30,6 +41,7 @@ export async function runLiveDemo(
 }> {
   const dashboard = createDashboardServer();
   const { url, stop } = await dashboard.start(options.port);
+  dashboard.setMeta({ walletAddress: DEMO_WALLET_ADDRESS, mode: 'scripted-demo' });
 
   // Interactive controls (the dashboard's "Simulate" buttons): can be
   // clicked any time after this, including re-running the full walkthrough

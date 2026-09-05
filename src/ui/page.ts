@@ -116,6 +116,10 @@ export const DASHBOARD_HTML = `<!doctype html>
   }
   .pdp-pill { background: var(--accent-bg); border-color: var(--accent-border); color: var(--text); }
   .pdp-pill .icon-sm { color: var(--accent); }
+  a.pill { text-decoration: none; cursor: pointer; }
+  a.pill:hover { color: var(--text); border-color: var(--accent-border); text-decoration: underline; text-underline-offset: 3px; }
+  a.pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .mode-pill { background: var(--surface-2); border-color: var(--border-strong); color: var(--text-muted); font-family: var(--font-mono); text-transform: none; letter-spacing: 0; }
 
   .icon { width: 20px; height: 20px; flex-shrink: 0; }
   .icon-sm { width: 14px; height: 14px; flex-shrink: 0; }
@@ -254,6 +258,11 @@ export const DASHBOARD_HTML = `<!doctype html>
   .log-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-faint); margin-bottom: 7px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
   .log-meta .badge { padding: 2px 8px; font-size: 10.5px; }
   .log-meta .txref { color: var(--text-faint); margin-left: auto; }
+  .log-meta .txref a, .log-executed a.tx {
+    color: var(--accent); text-decoration: none;
+  }
+  .log-meta .txref a:hover, .log-executed a.tx:hover { text-decoration: underline; text-underline-offset: 2px; }
+  .log-meta .txref a:focus-visible, .log-executed a.tx:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .log-reason { font-size: 13.5px; line-height: 1.55; color: var(--text); margin: 0 0 8px 16px; }
   .log-executed {
     display: flex; align-items: center; gap: 8px; margin-left: 16px;
@@ -274,10 +283,14 @@ export const DASHBOARD_HTML = `<!doctype html>
     <div class="brand">
       <span class="brand-mark" aria-hidden="true"></span>
       <span class="brand-name">Filecoin Triage</span>
+      <span class="pill mode-pill" id="modePill">scripted-demo</span>
     </div>
     <div class="status-row">
       <div class="pill"><span class="live-dot"></span> Live</div>
       <div class="pill pdp-pill"><span id="pdpPillIcon" class="icon-sm"></span><span>PDP: Proof of Data Possession</span></div>
+      <a class="pill" id="walletPill" href="#" target="_blank" rel="noopener" hidden>
+        <span id="walletPillIcon" class="icon-sm"></span><span id="walletPillLabel"></span>
+      </a>
     </div>
   </div>
 
@@ -379,8 +392,31 @@ export const DASHBOARD_HTML = `<!doctype html>
     pause: '<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg>',
     play: '<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8l6 4-6 4V8z" fill="currentColor" stroke="none"/></svg>',
     spinner: '<svg class="icon-sm spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a9 9 0 019 9"/></svg>',
-    checkSeal: '<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 1.6 2.8-.3 1.1 2.6 2.6 1.1-.3 2.8L22 12l-1.4 2.2.3 2.8-2.6 1.1-1.1 2.6-2.8-.3L12 22l-2.4-1.6-2.8.3-1.1-2.6-2.6-1.1.3-2.8L2 12l1.4-2.2-.3-2.8 2.6-1.1 1.1-2.6 2.8.3z"/><path d="M8.5 12.2l2.3 2.3 4.7-4.9"/></svg>'
+    checkSeal: '<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 1.6 2.8-.3 1.1 2.6 2.6 1.1-.3 2.8L22 12l-1.4 2.2.3 2.8-2.6 1.1-1.1 2.6-2.8-.3L12 22l-2.4-1.6-2.8.3-1.1-2.6-2.6-1.1.3-2.8L2 12l1.4-2.2-.3-2.8 2.6-1.1 1.1-2.6 2.8.3z"/><path d="M8.5 12.2l2.3 2.3 4.7-4.9"/></svg>',
+    externalLink: '<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h6"/><path d="M14 4h6v6"/><path d="M10 14L20 4"/></svg>'
   };
+
+  var FILFOX_ADDRESS_BASE = 'https://calibration.filfox.info/en/address/';
+  var FILFOX_MESSAGE_BASE = 'https://calibration.filfox.info/en/message/';
+
+  // Placeholder tx hashes used by the console-only executors (see
+  // src/demo/run-live-demo.ts and src/demo/run-drain-cli.ts) — these never
+  // correspond to a real on-chain transaction, so they must never render as
+  // a clickable explorer link.
+  var PLACEHOLDER_TX_HASHES = { '0xTOPUP': true, '0xDROP': true };
+
+  function isRealTxHash(tx) {
+    if (!tx) return false;
+    var s = String(tx);
+    if (PLACEHOLDER_TX_HASHES[s]) return false;
+    // The simulated CLI hash is 0x + 64 zeros — also not a real tx.
+    if (/^0x0+$/.test(s)) return false;
+    return true;
+  }
+
+  function shortAddr(addr) {
+    return addr.length > 14 ? (addr.slice(0, 6) + '…' + addr.slice(-5)) : addr;
+  }
 
   var BUTTON_ICON = { healthy: ICONS.check, 'tight-verified': ICONS.alert, 'tight-unverified': ICONS.trash, auto: ICONS.play };
   var BAND_ICON = { green: ICONS.check, yellow: ICONS.alert, red: ICONS.x, 'insufficient-data': ICONS.help };
@@ -431,22 +467,34 @@ export const DASHBOARD_HTML = `<!doctype html>
     actionEl.innerHTML = (ACTION_ICON[action] || ICONS.minus) + '<span>' + (ACTION_TEXT[action] || action) + '</span>';
   }
 
+  // Renders a tx hash as a real Filfox message link when it looks like a
+  // real on-chain hash, or as escaped plain text (no link) for a
+  // placeholder like '0xTOPUP'/'0xDROP' — never let a fake hash look
+  // clickable.
+  function txSpan(tx) {
+    var txStr = String(tx);
+    if (isRealTxHash(txStr)) {
+      return '<a class="tx" href="' + FILFOX_MESSAGE_BASE + encodeURIComponent(txStr) + '" target="_blank" rel="noopener">' + escapeHtml(txStr) + '</a>';
+    }
+    return '<span class="tx">' + escapeHtml(txStr) + '</span>';
+  }
+
   function fmtExecuted(ex) {
     if (!ex) return '';
     if (ex.kind === 'top-up') {
-      return ICONS.arrowUp + '<span>Executed top-up &middot; <span class="tx">' + escapeHtml(String(ex.amount)) + '</span> base units &middot; tx <span class="tx">' + escapeHtml(String(ex.txHash)) + '</span></span>';
+      return ICONS.arrowUp + '<span>Executed top-up &middot; <span class="tx">' + escapeHtml(String(ex.amount)) + '</span> base units &middot; tx ' + txSpan(ex.txHash) + '</span>';
     }
     if (ex.kind === 'drop-dataset') {
-      return ICONS.trash + '<span>Executed drop &middot; data set <span class="tx">' + escapeHtml(String(ex.dataSetId)) + '</span> &middot; end epoch <span class="tx">' + escapeHtml(String(ex.endEpoch)) + '</span>' + (ex.txHash ? ' &middot; tx <span class="tx">' + escapeHtml(String(ex.txHash)) + '</span>' : '') + '</span>';
+      return ICONS.trash + '<span>Executed drop &middot; data set <span class="tx">' + escapeHtml(String(ex.dataSetId)) + '</span> &middot; end epoch <span class="tx">' + escapeHtml(String(ex.endEpoch)) + '</span>' + (ex.txHash ? ' &middot; tx ' + txSpan(ex.txHash) : '') + '</span>';
     }
     return ICONS.minus + '<span>No on-chain action taken</span>';
   }
 
   function txRef(evt) {
     var tx = evt.executed && evt.executed.txHash ? String(evt.executed.txHash) : null;
-    if (tx) {
+    if (tx && isRealTxHash(tx)) {
       var short = tx.length > 10 ? (tx.slice(0, 6) + '…' + tx.slice(-4)) : tx;
-      return escapeHtml(short);
+      return '<a href="' + FILFOX_MESSAGE_BASE + encodeURIComponent(tx) + '" target="_blank" rel="noopener">' + escapeHtml(short) + '</a>';
     }
     return '#' + escapeHtml(String(evt.seq));
   }
@@ -481,12 +529,32 @@ export const DASHBOARD_HTML = `<!doctype html>
     });
   }
 
+  function renderMeta(meta) {
+    var modePill = document.getElementById('modePill');
+    modePill.textContent = (meta && meta.mode) || 'scripted-demo';
+
+    var walletPill = document.getElementById('walletPill');
+    var addr = meta && meta.walletAddress;
+    if (addr) {
+      walletPill.href = FILFOX_ADDRESS_BASE + encodeURIComponent(addr);
+      document.getElementById('walletPillLabel').textContent = shortAddr(addr);
+      document.getElementById('walletPillIcon').innerHTML = ICONS.externalLink;
+      walletPill.hidden = false;
+    } else {
+      walletPill.hidden = true;
+    }
+  }
+
   function refresh() {
     return fetch('/state')
       .then(function (r) { return r.json(); })
       .then(function (state) {
         renderCurrent(state.current || {});
         renderLog(state.events || []);
+        // meta is static (wallet/mode) and always present in /state
+        // independent of whether any decision has been pushed yet — render
+        // it once populated, and on every poll thereafter (cheap, idempotent).
+        renderMeta(state.meta || null);
       })
       .catch(function () { /* ignore transient poll failures */ });
   }
