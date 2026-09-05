@@ -200,19 +200,19 @@ describe('dashboard server', () => {
     const state = await (await fetch(handle.url + '/state')).json();
     expect(state.events[0].executed.txHash).toBe(realTxHash);
 
-    // The page's client-side logic must classify this as a real hash and
-    // build a Filfox message link for it — verified here by confirming the
-    // served page contains the link-building logic keyed on the real base
-    // URL and the isRealTxHash placeholder guard.
-    const html = await (await fetch(handle.url + '/')).text();
+    // The trace page's client-side logic must classify this as a real hash
+    // and build a Filfox message link for it — verified here by confirming
+    // the served /trace page contains the link-building logic keyed on the
+    // real base URL and the isRealTxHash placeholder guard (the decision
+    // log, and its tx-link rendering, lives on /trace, not the root page).
+    const html = await (await fetch(handle.url + '/trace')).text();
     expect(html).toContain('https://calibration.filfox.info/en/message/');
     expect(html).toContain('isRealTxHash');
   });
 
-  it('placeholder tx hashes (0xTOPUP / 0xDROP) are recognized as non-real and never linked, falling back to #seq', async () => {
-    const html = await (
-      await fetch((handle = await createDashboardServer().start(0)).url + '/')
-    ).text();
+  it('placeholder tx hashes (0xTOPUP / 0xDROP) are recognized as non-real and never linked, falling back to #seq (on the /trace page, where the decision log now lives)', async () => {
+    handle = await createDashboardServer().start(0);
+    const html = await (await fetch(handle.url + '/trace')).text();
     // Placeholder hashes used by console-only executors must be excluded
     // from real-link treatment.
     expect(html).toContain("'0xTOPUP': true");

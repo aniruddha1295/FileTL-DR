@@ -1,7 +1,7 @@
 import http, { type Server } from 'node:http';
 import type { DecisionTrace } from '../decision-engine/index.js';
 import type { ExecutedAction } from '../onchain/actions.js';
-import { DASHBOARD_HTML } from './page.js';
+import { DASHBOARD_HTML, TRACE_HTML } from './page.js';
 
 /**
  * One entry in the decision log served to the UI. Wraps the raw
@@ -123,6 +123,11 @@ export function createDashboardServer(): DashboardServer {
             if (url === '/' || url === '/index.html') {
               res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
               res.end(DASHBOARD_HTML);
+              return;
+            }
+            if (url === '/trace' || url === '/trace.html') {
+              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+              res.end(TRACE_HTML);
               return;
             }
             if (url === '/state') {
