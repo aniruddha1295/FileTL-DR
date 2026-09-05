@@ -85,4 +85,64 @@ describe('dashboard server', () => {
     expect(state.events[0].executed).toMatchObject({ kind: 'drop-dataset', txHash: '0xabc123' });
     expect(state.current.pdpStatus.status).toBe('unverified');
   });
+
+  it('POST /simulate/:name invokes the registered handler and reflects its pushDecision result', async () => {
+    const server: DashboardServer = createDashboardServer();
+    handle = await server.start(0);
+
+    let receivedName: string | null = null;
+    server.onSimulate(async (name) => {
+      receivedName = name;
+      const history = [
+        makeSnapshot({ epoch: 1n, lockupRatePerEpoch: 1n, runwayInEpochs: 950n, availableFunds: 950n, grossCoverageInEpochs: 1000n }),
+      ];
+      const pdpStatus: PDPStatusResult = { dataSetId: 1n, currentEpoch: 1n, lastProvenEpoch: 0n, nextChallengeEpoch: 5000n, status: 'verified' };
+      server.pushDecision(evaluate(history, pdpStatus));
+    });
+
+    const res = await fetch(handle.url + '/simulate/healthy', { method: 'POST' });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(receivedName).toBe('healthy');
+
+    const state = await (await fetch(handle.url + '/state')).json();
+    expect(state.current.band).toBe('green');
+  });
+
+  it('POST /simulate/:name returns 501 when no handler is registered', async () => {
+    const server: DashboardServer = createDashboardServer();
+    handle = await server.start(0);
+
+    const res = await fetch(handle.url + '/simulate/healthy', { method: 'POST' });
+    expect(res.status).toBe(501);
+  });
+
+  it('POST /simulate/:name returns 500 and does not crash the server when the handler throws', async () => {
+    const server: DashboardServer = createDashboardServer();
+    handle = await server.start(0);
+    server.onSimulate(async () => {
+      throw new Error('boom');
+    });
+
+    const res = await fetch(handle.url + '/simulate/unknown-scenario', { method: 'POST' });
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.error).toMatch(/boom/);
+
+    // Server is still alive and responsive after the failure.
+    const pageRes = await fetch(handle.url + '/');
+    expect(pageRes.status).toBe(200);
+  });
+
+  it('page HTML includes the interactive scenario buttons', async () => {
+    const server: DashboardServer = createDashboardServer();
+    handle = await server.start(0);
+    const html = await (await fetch(handle.url + '/')).text();
+    expect(html).toContain('data-scenario="healthy"');
+    expect(html).toContain('data-scenario="tight-verified"');
+    expect(html).toContain('data-scenario="tight-unverified"');
+    expect(html).toContain('data-scenario="auto"');
+  });
 });

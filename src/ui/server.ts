@@ -31,6 +31,17 @@ export interface DashboardState {
 export interface DashboardServer {
   /** Feed a new decision (and, once available, its executed action result) into the running dashboard. Appends to the log and becomes the new `current` state. */
   pushDecision(trace: DecisionTrace, executed?: ExecutedAction): void;
+  /**
+   * Registers the handler invoked when a client POSTs `/simulate/:name`
+   * (the dashboard's interactive scenario buttons). The handler is
+   * responsible for running the real decision engine for `name` and calling
+   * `pushDecision` itself — this module deliberately knows nothing about
+   * scenarios/decision-engine types, keeping it a generic HTTP+state layer
+   * (the integration lives in src/demo/run-live-demo.ts, same pattern as
+   * the existing drain-scenario wiring). Only one handler at a time;
+   * registering again replaces the previous one.
+   */
+  onSimulate(handler: (name: string) => Promise<void>): void;
   /** Starts the HTTP server. Pass 0 (or omit) for an OS-assigned ephemeral port — useful for tests. Resolves once listening. */
   start(port?: number): Promise<{ url: string; stop: () => void }>;
 }
@@ -51,6 +62,11 @@ export function createDashboardServer(): DashboardServer {
   const events: DecisionLogEntry[] = [];
   let seq = 0;
   let server: Server | null = null;
+  let simulateHandler: ((name: string) => Promise<void>) | null = null;
+
+  function onSimulate(handler: (name: string) => Promise<void>): void {
+    simulateHandler = handler;
+  }
 
   function pushDecision(trace: DecisionTrace, executed?: ExecutedAction): void {
     events.push({
@@ -76,28 +92,49 @@ export function createDashboardServer(): DashboardServer {
   function start(port = 0): Promise<{ url: string; stop: () => void }> {
     return new Promise((resolve, reject) => {
       server = http.createServer((req, res) => {
-        try {
-          const url = req.url ?? '/';
-          if (url === '/' || url === '/index.html') {
-            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-            res.end(DASHBOARD_HTML);
-            return;
-          }
-          if (url === '/state') {
-            const body = JSON.stringify(
-              getState(),
-              (_key, value) => (typeof value === 'bigint' ? value.toString() : value)
-            );
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(body);
-            return;
-          }
-          res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-          res.end('Not found');
-        } catch (err) {
-          res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-          res.end(`Internal error: ${err instanceof Error ? err.message : String(err)}`);
-        }
+        Promise.resolve()
+          .then(async () => {
+            const url = req.url ?? '/';
+            if (url === '/' || url === '/index.html') {
+              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+              res.end(DASHBOARD_HTML);
+              return;
+            }
+            if (url === '/state') {
+              const body = JSON.stringify(
+                getState(),
+                (_key, value) => (typeof value === 'bigint' ? value.toString() : value)
+              );
+              res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+              res.end(body);
+              return;
+            }
+            if (req.method === 'POST' && url.startsWith('/simulate/')) {
+              const name = decodeURIComponent(url.slice('/simulate/'.length));
+              if (!simulateHandler) {
+                res.writeHead(501, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ ok: false, error: 'No simulate handler registered' }));
+                return;
+              }
+              try {
+                await simulateHandler(name);
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ ok: true }));
+              } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }));
+              }
+              return;
+            }
+            res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.end('Not found');
+          })
+          .catch((err) => {
+            if (!res.headersSent) {
+              res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+            }
+            res.end(`Internal error: ${err instanceof Error ? err.message : String(err)}`);
+          });
       });
 
       server.once('error', reject);
@@ -115,5 +152,5 @@ export function createDashboardServer(): DashboardServer {
     });
   }
 
-  return { pushDecision, start };
+  return { pushDecision, onSimulate, start };
 }

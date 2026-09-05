@@ -1,9 +1,15 @@
 import { pathToFileURL } from 'node:url';
 import { createDashboardServer } from '../ui/server.js';
 import { runDrainScenario, type DrainScenarioOptions } from './drain-scenario.js';
-import type { ActionExecutor } from '../onchain/actions.js';
+import { SCENARIOS, type ScenarioName } from './scenarios.js';
+import { evaluate } from '../decision-engine/index.js';
+import { executeDecision, type ActionExecutor } from '../onchain/actions.js';
 import type { DecisionTrace } from '../decision-engine/index.js';
 import type { ExecutedAction } from '../onchain/actions.js';
+
+function isScenarioName(name: string): name is ScenarioName {
+  return name in SCENARIOS;
+}
 
 /**
  * Wires the Phase 4 dashboard (src/ui/server.ts) and the deterministic drain
@@ -24,6 +30,30 @@ export async function runLiveDemo(
 }> {
   const dashboard = createDashboardServer();
   const { url, stop } = await dashboard.start(options.port);
+
+  // Interactive controls (the dashboard's "Simulate" buttons): can be
+  // clicked any time after this, including re-running the full walkthrough
+  // ("auto") on demand — additive to the auto-play run below, not a
+  // replacement for it.
+  dashboard.onSimulate(async (name) => {
+    if (name === 'auto') {
+      await runDrainScenario(executor, {
+        ...options,
+        onStep: (history, trace, executed, totalSteps) => {
+          dashboard.pushDecision(trace, executed);
+          options.onStep?.(history, trace, executed, totalSteps);
+        },
+      });
+      return;
+    }
+    if (!isScenarioName(name)) {
+      throw new Error(`Unknown scenario "${name}". Valid: auto, ${Object.keys(SCENARIOS).join(', ')}`);
+    }
+    const scenario = SCENARIOS[name];
+    const trace = evaluate(scenario.history, scenario.pdpStatus);
+    const executed = await executeDecision(executor, trace, scenario.pdpStatus.dataSetId);
+    dashboard.pushDecision(trace, executed);
+  });
 
   const traces = await runDrainScenario(executor, {
     ...options,
