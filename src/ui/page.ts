@@ -23,8 +23,8 @@
  * DASHBOARD_HTML's <script> (bandCard, bandIcon, bandLabel, bandSub,
  * gaugeFill, gaugePercentLabel, estimatedDaysRemaining,
  * estimatedEpochsRemaining, pdpStatus, actionBadge, controlsRow, verifyIcon,
- * pdpPillIcon, modePill, walletPill*, .btn/data-scenario/.btn-icon) and
- * TRACE_HTML's <script> (log, logCount, modePill, walletPill*) is
+ * pdpPillIcon, walletPill*, .btn/data-scenario/.btn-icon) and
+ * TRACE_HTML's <script> (log, logCount, walletPill*) is
  * load-bearing — restyle freely, keep those hooks intact or the JS (and
  * tests/ui.test.ts / tests/run-live-demo.test.ts) will break.
  */
@@ -105,7 +105,6 @@ const SHARED_HEAD_STYLE = `
   a.pill { text-decoration: none; cursor: pointer; }
   a.pill:hover { color: var(--text); border-color: var(--accent-border); text-decoration: underline; text-underline-offset: 3px; }
   a.pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .mode-pill { background: var(--surface-2); border-color: var(--border-strong); color: var(--text-muted); font-family: var(--font-mono); text-transform: none; letter-spacing: 0; }
   .icon { width: 20px; height: 20px; flex-shrink: 0; }
   .icon-sm { width: 14px; height: 14px; flex-shrink: 0; }
   footer { margin-top: 24px; text-align: center; font-size: 11.5px; color: var(--text-faint); }
@@ -158,10 +157,16 @@ const SHARED_SCRIPT_PRELUDE = `
 
   function bandClass(band) { return 'band-' + (band || 'insufficient-data'); }
 
-  function renderMeta(meta) {
-    var modePill = document.getElementById('modePill');
-    if (modePill) modePill.textContent = (meta && meta.mode) || 'scripted-demo';
+  // Human-facing labels for internal state values — these enum-style
+  // strings (band/PDP status) drive CSS classes and decision logic
+  // elsewhere, but must never be shown to a reader verbatim.
+  var BAND_LABEL = { green: 'Healthy', yellow: 'Attention', red: 'Critical', 'insufficient-data': 'Gathering data' };
+  var PDP_LABEL = { verified: 'Verified', verifying: 'Pending', unverified: 'Not verified' };
 
+  function bandLabel(band) { return BAND_LABEL[band] || 'Gathering data'; }
+  function pdpLabel(status) { return PDP_LABEL[status] || 'Unknown'; }
+
+  function renderMeta(meta) {
     var walletPill = document.getElementById('walletPill');
     if (!walletPill) return;
     var addr = meta && meta.walletAddress;
@@ -181,7 +186,6 @@ const TOPNAV_HTML = (extraStatus: string) => `
     <div class="brand">
       <span class="brand-mark" aria-hidden="true"></span>
       <span class="brand-name">Filecoin Triage</span>
-      <span class="pill mode-pill" id="modePill">scripted-demo</span>
     </div>
     <div class="status-row">
       <div class="pill"><span class="live-dot"></span> Live</div>
@@ -312,7 +316,7 @@ ${TOPNAV_HTML('')}
 
   <div class="verify-strip">
     <span id="verifyIcon" class="icon-sm"></span>
-    <span>This decision engine is live-verified against real <strong>Filecoin Pay</strong> and <strong>PDP</strong> transactions on Filecoin calibration testnet.</span>
+    <span>Verified against real <strong>Filecoin Pay</strong> and <strong>PDP</strong> transactions on Filecoin calibration testnet.</span>
   </div>
 
   <div class="hero">
@@ -338,7 +342,7 @@ ${TOPNAV_HTML('')}
   </div>
 
   <div class="controls">
-    <div class="controls-label">Simulate a scenario &mdash; runs the real decision engine on demand</div>
+    <div class="controls-label">Simulate a scenario</div>
     <div class="controls-row" id="controlsRow">
       <button class="btn btn-healthy" data-scenario="healthy" type="button">
         <span class="btn-icon"></span><span class="btn-label">Healthy Account</span>
@@ -399,7 +403,7 @@ ${SHARED_SCRIPT_PRELUDE}
 
   var BUTTON_ICON = { healthy: ICONS.check, 'tight-verified': ICONS.alert, 'tight-unverified': ICONS.trash, auto: ICONS.play };
   var BAND_ICON = { green: ICONS.check, yellow: ICONS.alert, red: ICONS.x, 'insufficient-data': ICONS.help };
-  var BAND_TEXT = { green: 'Green &mdash; healthy runway', yellow: 'Yellow &mdash; runway tightening', red: 'Red &mdash; critical, deciding now', 'insufficient-data': 'Insufficient data &mdash; monitoring' };
+  var BAND_SUB = { green: 'Runway is healthy, no action needed', yellow: 'Runway is tightening', red: 'Critical &mdash; deciding now', 'insufficient-data': 'Waiting for enough history' };
   var PDP_ICON = { verified: ICONS.check, verifying: ICONS.clock, unverified: ICONS.x };
   var ACTION_ICON = { none: ICONS.minus, 'top-up': ICONS.arrowUp, 'drop-dataset': ICONS.trash, 'hold-and-monitor': ICONS.pause };
   var ACTION_TEXT = { none: 'Monitoring', 'top-up': 'Top-up proposed', 'drop-dataset': 'Dataset dropped', 'hold-and-monitor': 'Holding, re-checking' };
@@ -416,8 +420,8 @@ ${SHARED_SCRIPT_PRELUDE}
     var band = state.band || null;
     bandCard.className = bandClass(band) + ' hero-stat';
     document.getElementById('bandIcon').innerHTML = BAND_ICON[band] || ICONS.help;
-    document.getElementById('bandLabel').innerHTML = band ? (band.replace(/-/g, ' ')) : 'Waiting for data…';
-    document.getElementById('bandSub').innerHTML = band ? BAND_TEXT[band] : '';
+    document.getElementById('bandLabel').textContent = band ? bandLabel(band) : 'Waiting for data…';
+    document.getElementById('bandSub').innerHTML = band ? BAND_SUB[band] : '';
 
     var pct = state.details && typeof state.details.percentOfBaseline === 'number' ? state.details.percentOfBaseline : null;
     var gaugeFill = document.getElementById('gaugeFill');
@@ -433,7 +437,7 @@ ${SHARED_SCRIPT_PRELUDE}
     var pdpEl = document.getElementById('pdpStatus');
     var pdpStatus = state.pdpStatus && state.pdpStatus.status;
     pdpEl.className = 'badge ' + (pdpStatus ? 'badge-' + pdpStatus : 'badge-unknown');
-    pdpEl.innerHTML = (PDP_ICON[pdpStatus] || ICONS.help) + '<span>' + (pdpStatus || 'unknown') + '</span>';
+    pdpEl.innerHTML = (PDP_ICON[pdpStatus] || ICONS.help) + '<span>' + pdpLabel(pdpStatus) + '</span>';
 
     var actionEl = document.getElementById('actionBadge');
     var action = state.action || 'none';
@@ -496,13 +500,17 @@ export const TRACE_HTML = `<!doctype html>
 <style>
 ${SHARED_HEAD_STYLE}
   .back-link {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12.5px; font-weight: 600; color: var(--text-muted);
-    text-decoration: none; margin-bottom: 18px;
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12.5px; font-weight: 600; color: var(--text);
+    text-decoration: none; margin-bottom: 20px;
+    padding: 9px 15px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border-strong);
+    min-height: 40px;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
   }
-  .back-link:hover { color: var(--text); }
-  .back-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-  .back-link .icon-sm { transform: rotate(-90deg); }
+  .back-link:hover { background: var(--surface-2); border-color: var(--accent-border); }
+  .back-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .back-link .icon-sm { transform: rotate(-90deg); color: var(--text-muted); }
 
   .page-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
   .page-title h1 { font-size: clamp(20px, 2.6vw, 26px); font-weight: 700; margin: 0 0 4px; color: var(--text); letter-spacing: -0.01em; }
@@ -651,7 +659,7 @@ ${SHARED_SCRIPT_PRELUDE}
         '<div class="tl-card">' +
           '<div class="tl-header">' + ICONS.clock +
           ' #' + evt.seq + ' &middot; ' + escapeHtml(new Date(evt.timestamp).toLocaleTimeString()) +
-          ' <span class="badge badge-' + (evt.band === 'red' ? 'unverified' : evt.band === 'green' ? 'verified' : evt.band === 'yellow' ? 'verifying' : 'unknown') + '">' + escapeHtml(evt.band) + '</span>' +
+          ' <span class="badge badge-' + (evt.band === 'red' ? 'unverified' : evt.band === 'green' ? 'verified' : evt.band === 'yellow' ? 'verifying' : 'unknown') + '">' + bandLabel(evt.band) + '</span>' +
           '<span class="txref">' + txRef(evt) + '</span></div>' +
           '<div class="tl-action action-' + action + '">' + (ACTION_ICON[action] || ICONS.minus) + '<span>' + (ACTION_TEXT[action] || action) + '</span></div>' +
           '<div class="tl-reason">' + escapeHtml(evt.reason) + '</div>' +

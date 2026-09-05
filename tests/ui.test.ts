@@ -164,16 +164,16 @@ describe('dashboard server', () => {
     expect(state.meta).toEqual({ walletAddress: '0x044c40FBC017C74273eF402655391D4372Cf715e', mode: 'scripted-demo' });
   });
 
-  it('page HTML renders the wallet pill link and mode pill wired to the real Filfox address and honest scripted-demo mode', async () => {
+  it('page HTML renders the wallet pill link wired to the real Filfox address', async () => {
     const server: DashboardServer = createDashboardServer();
     handle = await server.start(0);
     server.setMeta({ walletAddress: '0x044c40FBC017C74273eF402655391D4372Cf715e', mode: 'scripted-demo' });
 
     const html = await (await fetch(handle.url + '/')).text();
-    // Static "mode" pill hook is present in the markup (populated client-side from /state.meta).
-    expect(html).toContain('id="modePill"');
-    expect(html).toContain('scripted-demo');
     // Wallet pill hook + client-side rendering wired to the real Filfox address URL base.
+    // (The "mode" value itself is intentionally not rendered as a visible
+    // badge — see /state.meta tests above for the underlying honest data
+    // model, which is unaffected by this UI-only change.)
     expect(html).toContain('id="walletPill"');
     expect(html).toContain('https://calibration.filfox.info/en/address/');
 
