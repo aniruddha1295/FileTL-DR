@@ -2,6 +2,7 @@ import { pathToFileURL } from 'node:url';
 import { createDashboardServer } from '../ui/server.js';
 import { runDrainScenario, type DrainScenarioOptions } from './drain-scenario.js';
 import { SCENARIOS, type ScenarioName } from './scenarios.js';
+import { LIVE_RUN_STEPS } from './live-run-record.js';
 import { evaluate } from '../decision-engine/index.js';
 import { executeDecision, type ActionExecutor } from '../onchain/actions.js';
 import type { DecisionTrace } from '../decision-engine/index.js';
@@ -9,6 +10,10 @@ import type { ExecutedAction } from '../onchain/actions.js';
 
 function isScenarioName(name: string): name is ScenarioName {
   return name in SCENARIOS;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -58,8 +63,22 @@ export async function runLiveDemo(
       });
       return;
     }
+    if (name === 'live-verified') {
+      // Replays a real captured run, not a synthetic scenario — see
+      // src/demo/live-run-record.ts. Real tx hashes render as real,
+      // clickable calibration Filfox links (src/ui/page.ts's
+      // isRealTxHash), same as any other pushed decision.
+      for (let i = 0; i < LIVE_RUN_STEPS.length; i++) {
+        const step = LIVE_RUN_STEPS[i];
+        dashboard.pushDecision(step.trace, step.executed);
+        if (i < LIVE_RUN_STEPS.length - 1) {
+          await sleep(options.stepDelayMs ?? 1500);
+        }
+      }
+      return;
+    }
     if (!isScenarioName(name)) {
-      throw new Error(`Unknown scenario "${name}". Valid: auto, ${Object.keys(SCENARIOS).join(', ')}`);
+      throw new Error(`Unknown scenario "${name}". Valid: auto, live-verified, ${Object.keys(SCENARIOS).join(', ')}`);
     }
     const scenario = SCENARIOS[name];
     const trace = evaluate(scenario.history, scenario.pdpStatus);

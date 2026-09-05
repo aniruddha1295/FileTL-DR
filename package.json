@@ -11,6 +11,7 @@
     "check-account": "tsx src/onchain/check-account.ts",
     "check-wallet-balance": "tsx src/onchain/check-wallet-balance.ts",
     "live-verify": "tsx src/onchain/live-verify.ts",
+    "live-decision-run": "tsx src/onchain/live-decision-run.ts",
     "demo": "tsx src/demo/run-live-demo.ts",
     "demo:cli-only": "tsx src/demo/run-drain-cli.ts"
   },

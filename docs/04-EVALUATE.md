@@ -8,16 +8,16 @@ Prerequisite: 03-TEST.md exit criteria met. Use this doc to self-score before su
 - [x] Can you point to the exact line of code / log event / dashboard moment where the agent reads onchain state and decides? → `src/decision-engine/index.ts`, `evaluate()`; dashboard decision-log entry per step.
 - [x] Does the demo show the agent's behavior actually changing based on what it read? → green/none, yellow/top-up, red+verified/top-up, red+unverified/drop-dataset — all four distinct, all tested, all demoed.
 - [x] Is there zero human-in-the-loop for the decision itself? → yes; a human only sets thresholds/config beforehand, `evaluate()` decides at runtime with no human call.
-- **Self-score: strong.** The compound runway+PDP rule (not a single threshold) and the live-verified real green/none decision are the strongest evidence here.
+- **Self-score: strong.** The compound runway+PDP rule (not a single threshold) is the core evidence; as of 2026-09-05 both the green/none path AND the red-band compound decision (top-up on verified, drop-dataset on unverified) have been forced against real onchain state — see README's second verification table and `docs/BUILD-PLAN.md`'s 2026-09-05 update.
 
 ### 2. Working demo quality — 25%
 - [x] Does it run, live or via a video, start to finish, without narrating around a broken part? → `docker run -p 3000:3000 triage-agent`, verified working end-to-end including the container build itself running the full test suite.
 - [x] Is the core flow legible to someone seeing it for the first time in ~2 minutes? → dashboard shows band/runway/PDP-status/reason live; ~15s scripted run to full climax.
-- [x] Is it clearly more than a mockup/UI shell? → real decision engine executes every step; real Synapse SDK calls exist and are live-verified separately.
+- [x] Is it clearly more than a mockup/UI shell? → real decision engine executes every step; a "Live Verified Run" button on the dashboard itself replays a real captured on-chain run (real tx hash, clickable Filfox link), not just a separately-run script.
 - **Self-score: strong**, pending the actual video recording (Phase 6) which turns "can run" into "judges saw it run."
 
 ### 3. Meaningful use of Filecoin — 20%
-- [x] Are balances/runway/proofs pulled from a real onchain source, verifiable independently? → yes: real block numbers, real `dataSetId 32848`, real retrievable piece — see README's verification table.
+- [x] Are balances/runway/proofs pulled from a real onchain source, verifiable independently? → yes: real block numbers, real `dataSetId 32848` and `33859`, real retrievable piece, a real red-band top-up tx — see README's two verification tables.
 - [x] Is at least one of Filecoin Pay / Synapse SDK / PDP / Warm Storage genuinely load-bearing? → two chained: Filecoin Pay (runway) AND PDP (proof gating), not one decorative primitive.
 - [x] No hardcoded or simulated financial/proof values anywhere in the judged flow? → the judged flow (decision engine + real actions) has none; the deliberately-separate demo-narration layer (`src/demo/`) is clearly labeled as scripted, not presented as live chain interaction.
 - **Self-score: strong.** This is the criterion the live-verification work most directly targeted.

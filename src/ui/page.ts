@@ -263,6 +263,8 @@ ${SHARED_HEAD_STYLE}
   .btn-verified:hover:not(:disabled) { border-color: var(--accent-border); }
   .btn-unverified { border-color: var(--red-border); }
   .btn-unverified:hover:not(:disabled) { background: var(--red-bg); }
+  .btn-live { border-color: var(--green-border); color: var(--green); }
+  .btn-live:hover:not(:disabled) { background: var(--green-bg); }
   .btn-auto { margin-left: auto; background: var(--text); color: #0c0c11; border-color: var(--text); }
   .btn-auto:hover:not(:disabled) { background: #d7d9e2; }
   .spin { animation: spin 0.8s linear infinite; }
@@ -353,6 +355,9 @@ ${TOPNAV_HTML('')}
       <button class="btn btn-unverified" data-scenario="tight-unverified" type="button">
         <span class="btn-icon"></span><span class="btn-label">Tight Budget &middot; Proof Unverified</span>
       </button>
+      <button class="btn btn-live" data-scenario="live-verified" type="button">
+        <span class="btn-icon"></span><span class="btn-label">Live Verified Run (real testnet)</span>
+      </button>
       <button class="btn btn-auto" data-scenario="auto" type="button">
         <span class="btn-icon"></span><span class="btn-label">Run Full Walkthrough</span>
       </button>
@@ -401,7 +406,7 @@ ${SHARED_SCRIPT_PRELUDE}
   document.getElementById('pdpPillIcon').innerHTML = ICONS.checkSeal;
   document.getElementById('traceLinkIcon').innerHTML = ICONS.externalLink;
 
-  var BUTTON_ICON = { healthy: ICONS.check, 'tight-verified': ICONS.alert, 'tight-unverified': ICONS.trash, auto: ICONS.play };
+  var BUTTON_ICON = { healthy: ICONS.check, 'tight-verified': ICONS.alert, 'tight-unverified': ICONS.trash, 'live-verified': ICONS.checkSeal, auto: ICONS.play };
   var BAND_ICON = { green: ICONS.check, yellow: ICONS.alert, red: ICONS.x, 'insufficient-data': ICONS.help };
   var BAND_SUB = { green: 'Runway is healthy, no action needed', yellow: 'Runway is tightening', red: 'Critical &mdash; deciding now', 'insufficient-data': 'Waiting for enough history' };
   var PDP_ICON = { verified: ICONS.check, verifying: ICONS.clock, unverified: ICONS.x };

@@ -143,6 +143,7 @@ describe('dashboard server', () => {
     expect(html).toContain('data-scenario="healthy"');
     expect(html).toContain('data-scenario="tight-verified"');
     expect(html).toContain('data-scenario="tight-unverified"');
+    expect(html).toContain('data-scenario="live-verified"');
     expect(html).toContain('data-scenario="auto"');
   });
 
